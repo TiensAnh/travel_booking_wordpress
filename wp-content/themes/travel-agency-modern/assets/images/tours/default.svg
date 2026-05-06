@@ -1,0 +1,17 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="1000" fill="#DDF5FF"/>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <circle cx="1230" cy="188" r="98" fill="#FFF4C2"/>
+  <path d="M0 676C169 616 318 566 491 566C638 566 798 636 982 636C1180 636 1355 568 1600 508V1000H0V676Z" fill="#9ED8C0"/>
+  <path d="M0 720C148 640 307 616 468 646C643 679 807 778 1010 778C1202 778 1378 691 1600 616V1000H0V720Z" fill="#5BA98C"/>
+  <path d="M0 825C214 724 384 700 578 734C768 768 965 854 1172 854C1329 854 1465 809 1600 754V1000H0V825Z" fill="#1E6F68"/>
+  <path d="M476 774C562 700 629 676 706 676C793 676 863 713 951 780C1027 838 1100 870 1180 870C1257 870 1311 841 1380 790L1600 1000H295L476 774Z" fill="#234955" fill-opacity=".28"/>
+  <path d="M0 916C241 841 421 828 603 856C759 881 905 934 1072 934C1217 934 1356 901 1600 834V1000H0V916Z" fill="#F4E3B4"/>
+  <defs>
+    <linearGradient id="sky" x1="800" y1="0" x2="800" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BFE8FF"/>
+      <stop offset=".58" stop-color="#EAF8FF"/>
+      <stop offset="1" stop-color="#FDF7EA"/>
+    </linearGradient>
+  </defs>
+</svg>
