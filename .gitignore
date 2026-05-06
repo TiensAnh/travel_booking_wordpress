@@ -14,6 +14,8 @@ node_modules/
 vendor/
 *.log
 *.sql
+!database/
+!database/*.sql
 .DS_Store
 Thumbs.db
 readme.html
