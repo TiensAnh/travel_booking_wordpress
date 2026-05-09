@@ -3,6 +3,14 @@
  * Site header template.
  */
 
+$api_user     = function_exists( 'tam_backend_api_get_auth_user' ) ? tam_backend_api_get_auth_user() : null;
+$has_api_user = ! empty( $api_user );
+$is_signed_in = is_user_logged_in() || $has_api_user;
+$account_url  = $has_api_user && function_exists( 'tam_backend_api_get_account_url' ) ? tam_backend_api_get_account_url() : admin_url( 'profile.php' );
+$logout_url   = $has_api_user && function_exists( 'tam_backend_api_get_logout_url' )
+	? tam_backend_api_get_logout_url( function_exists( 'tam_get_current_public_url' ) ? tam_get_current_public_url() : home_url( '/' ) )
+	: wp_logout_url( home_url( '/' ) );
+
 ?>
 <!doctype html>
 <html <?php language_attributes(); ?>>
@@ -53,10 +61,15 @@
 			</nav>
 
 			<div class="site-header__actions">
-				<?php if ( is_user_logged_in() ) : ?>
-					<a class="tam-button tam-button--ghost tam-auth-user-link" href="<?php echo esc_url( admin_url( 'profile.php' ) ); ?>">
-						<?php esc_html_e( 'Tài khoản', 'travel-agency-modern' ); ?>
-					</a>
+				<?php if ( $is_signed_in ) : ?>
+					<div class="tam-auth-link-group">
+						<a class="tam-button tam-button--ghost tam-auth-user-link" href="<?php echo esc_url( $account_url ); ?>">
+							<?php esc_html_e( 'Tài khoản', 'travel-agency-modern' ); ?>
+						</a>
+						<a class="tam-button tam-button--ghost tam-auth-user-link" href="<?php echo esc_url( $logout_url ); ?>">
+							<?php esc_html_e( 'Đăng xuất', 'travel-agency-modern' ); ?>
+						</a>
+					</div>
 				<?php else : ?>
 					<button class="tam-button tam-auth-trigger" type="button" data-auth-open="login">
 						<?php esc_html_e( 'Đăng nhập / Đăng ký', 'travel-agency-modern' ); ?>
@@ -89,9 +102,12 @@
 				<?php endif; ?>
 			</nav>
 			<div class="site-mobile-panel__actions">
-				<?php if ( is_user_logged_in() ) : ?>
-					<a class="tam-button tam-button--ghost tam-auth-user-link" href="<?php echo esc_url( admin_url( 'profile.php' ) ); ?>">
+				<?php if ( $is_signed_in ) : ?>
+					<a class="tam-button tam-button--ghost tam-auth-user-link" href="<?php echo esc_url( $account_url ); ?>">
 						<?php esc_html_e( 'Tài khoản', 'travel-agency-modern' ); ?>
+					</a>
+					<a class="tam-button tam-button--ghost tam-auth-user-link" href="<?php echo esc_url( $logout_url ); ?>">
+						<?php esc_html_e( 'Đăng xuất', 'travel-agency-modern' ); ?>
 					</a>
 				<?php else : ?>
 					<button class="tam-button tam-auth-trigger" type="button" data-auth-open="login">

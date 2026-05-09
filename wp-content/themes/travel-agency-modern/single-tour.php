@@ -56,6 +56,12 @@ while ( have_posts() ) :
 	}
 
 	$related_tours = new WP_Query( $related_args );
+	$account_url   = function_exists( 'tam_backend_api_get_account_url' ) ? tam_backend_api_get_account_url() : home_url( '/tai-khoan/' );
+	$api_user      = function_exists( 'tam_backend_api_get_auth_user' ) ? tam_backend_api_get_auth_user() : null;
+	$review_notice = function_exists( 'tam_backend_api_get_review_notice_markup' ) ? tam_backend_api_get_review_notice_markup() : '';
+	$reviewable_bookings = function_exists( 'tam_backend_api_get_reviewable_bookings_for_post' )
+		? tam_backend_api_get_reviewable_bookings_for_post( get_the_ID() )
+		: array();
 	?>
 	<main id="main-content" class="site-main">
 		<section class="tam-section tam-section--compact tam-tour-detail">
@@ -261,6 +267,79 @@ while ( have_posts() ) :
 									<?php endforeach; ?>
 								</div>
 							</div>
+
+							<div id="tour-review-form" class="tam-review-form-wrap">
+								<?php echo wp_kses_post( $review_notice ); ?>
+
+								<?php if ( empty( $api_user ) ) : ?>
+									<div class="tam-form-notice tam-form-notice--info">
+										<?php esc_html_e( 'Đăng nhập tài khoản backend để gửi đánh giá sau chuyến đi của bạn.', 'travel-agency-modern' ); ?>
+									</div>
+								<?php elseif ( empty( $reviewable_bookings ) ) : ?>
+									<div class="tam-form-notice tam-form-notice--info">
+										<?php esc_html_e( 'Bạn có thể gửi đánh giá khi có booking đã hoàn thành cho tour này.', 'travel-agency-modern' ); ?>
+										<a class="tam-review-inline-link" href="<?php echo esc_url( $account_url ); ?>"><?php esc_html_e( 'Xem trang tài khoản', 'travel-agency-modern' ); ?></a>
+									</div>
+								<?php else : ?>
+									<form class="tam-review-form" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+										<?php wp_nonce_field( 'tam_submit_review', 'tam_review_nonce' ); ?>
+										<input type="hidden" name="action" value="tam_submit_tour_review" />
+										<input type="hidden" name="redirect_to" value="<?php echo esc_url( trailingslashit( get_permalink() ) . '#tour-review-form' ); ?>" />
+
+										<div class="tam-review-form__head">
+											<div>
+												<div class="tam-eyebrow"><?php esc_html_e( 'Đánh giá thật', 'travel-agency-modern' ); ?></div>
+												<h3><?php esc_html_e( 'Chia sẻ trải nghiệm với ADN Travel', 'travel-agency-modern' ); ?></h3>
+											</div>
+											<p><?php esc_html_e( 'Form này gửi trực tiếp vào backend review API của dự án booking.', 'travel-agency-modern' ); ?></p>
+										</div>
+
+										<div class="tam-review-form__grid">
+											<div class="tam-field">
+												<label for="tam-review-booking"><?php esc_html_e( 'Booking đã hoàn thành', 'travel-agency-modern' ); ?></label>
+												<select id="tam-review-booking" name="booking_id" required>
+													<?php foreach ( $reviewable_bookings as $booking ) : ?>
+														<option value="<?php echo esc_attr( $booking['id'] ); ?>">
+															<?php
+															echo esc_html(
+																sprintf(
+																	/* translators: 1: booking id, 2: travel date, 3: people count */
+																	__( '#%1$s - %2$s - %3$s khách', 'travel-agency-modern' ),
+																	$booking['id'],
+																	function_exists( 'tam_backend_api_format_date' ) ? tam_backend_api_format_date( $booking['travel_date'] ) : $booking['travel_date'],
+																	$booking['number_of_people']
+																)
+															);
+															?>
+														</option>
+													<?php endforeach; ?>
+												</select>
+											</div>
+
+											<div class="tam-field">
+												<label for="tam-review-rating"><?php esc_html_e( 'Số sao', 'travel-agency-modern' ); ?></label>
+												<select id="tam-review-rating" name="rating" required>
+													<option value="5"><?php esc_html_e( '5 sao - Rất hài lòng', 'travel-agency-modern' ); ?></option>
+													<option value="4"><?php esc_html_e( '4 sao - Tốt', 'travel-agency-modern' ); ?></option>
+													<option value="3"><?php esc_html_e( '3 sao - Ổn', 'travel-agency-modern' ); ?></option>
+													<option value="2"><?php esc_html_e( '2 sao - Cần cải thiện', 'travel-agency-modern' ); ?></option>
+													<option value="1"><?php esc_html_e( '1 sao - Chưa hài lòng', 'travel-agency-modern' ); ?></option>
+												</select>
+											</div>
+
+											<div class="tam-field tam-field--full">
+												<label for="tam-review-comment"><?php esc_html_e( 'Nội dung đánh giá', 'travel-agency-modern' ); ?></label>
+												<textarea id="tam-review-comment" name="comment" rows="5" required placeholder="<?php esc_attr_e( 'Điều gì làm bạn ấn tượng nhất trong chuyến đi này?', 'travel-agency-modern' ); ?>"></textarea>
+											</div>
+										</div>
+
+										<div class="tam-review-form__actions">
+											<button type="submit" class="tam-button tam-button--accent"><?php esc_html_e( 'Gửi đánh giá', 'travel-agency-modern' ); ?></button>
+											<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $account_url ); ?>"><?php esc_html_e( 'Xem lịch sử booking', 'travel-agency-modern' ); ?></a>
+										</div>
+									</form>
+								<?php endif; ?>
+							</div>
 						</section>
 
 						<section id="tour-inquiry" class="tam-tour-detail__section tam-tour-detail__inquiry tam-content-card">
@@ -287,7 +366,7 @@ while ( have_posts() ) :
 								<small><?php esc_html_e( 'Giá tham khảo, đã bao gồm các dịch vụ chính theo lịch trình.', 'travel-agency-modern' ); ?></small>
 							</div>
 
-							<form class="tam-tour-detail__booking-form" data-tour-booking-box data-tour-title="<?php echo esc_attr( get_the_title() ); ?>" data-tour-id="<?php echo esc_attr( get_the_ID() ); ?>" data-checkout-url="<?php echo esc_url( tam_get_page_url_by_path( 'thanh-toan', '/thanh-toan/' ) ); ?>" data-base-price="<?php echo esc_attr( $price_numeric ); ?>">
+							<form class="tam-tour-detail__booking-form" data-tour-booking-box data-tour-title="<?php echo esc_attr( get_the_title() ); ?>" data-tour-id="<?php echo esc_attr( get_the_ID() ); ?>" data-checkout-url="<?php echo esc_url( tam_get_page_url_by_path( 'thanh-toan', '/thanh-toan/' ) ); ?>" data-base-price="<?php echo esc_attr( $price_numeric ); ?>" data-authenticated="<?php echo ! empty( $api_user ) ? 'true' : 'false'; ?>">
 								<label class="tam-tour-detail__field">
 									<span><?php esc_html_e( 'Chọn ngày khởi hành', 'travel-agency-modern' ); ?></span>
 									<select name="departure_date" data-booking-date>

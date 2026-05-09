@@ -1,48 +1,68 @@
-# Travel Booking WordPress
+# Travel Booking WordPress + Backend API
 
-Project này là một website WordPress cho booking tour. Giao diện chính đang dùng child theme `Travel Agency Modern`, kế thừa từ parent theme `travel-agency`.
+Project này là website du lịch chạy theo mô hình hybrid:
+
+- Frontend và CMS dùng WordPress
+- Child theme chính là `travel-agency-modern`
+- Backend nghiệp vụ được nhúng trong repo tại `backend-api`
+- Booking, payment, review, auth sẽ đi qua backend API
+
+## Cấu trúc chính
+
+```text
+travel_booking/
+├─ backend-api/                         # Node.js / Express backend
+│  ├─ config/
+│  ├─ controllers/
+│  ├─ database/
+│  │  ├─ schema.sql
+│  │  └─ seed.sql
+│  ├─ routes/
+│  ├─ .env.example
+│  └─ server.js
+├─ database/
+│  └─ db_travel_booking.sql            # Database WordPress demo
+└─ wp-content/
+   └─ themes/
+      ├─ travel-agency/                # Parent theme
+      └─ travel-agency-modern/         # Child theme đang dùng
+```
 
 ## Yêu cầu môi trường
 
-- PHP 8.1 trở lên
+- PHP 8.1+
 - MySQL hoặc MariaDB
-- Apache/Nginx
-- XAMPP, Laragon hoặc môi trường WordPress local tương đương
+- XAMPP / Laragon / stack WordPress tương đương
+- Node.js 18+
 - Git
 
-## Clone code
-
-Clone repo vào thư mục web local, ví dụ với XAMPP:
+## 1. Clone code
 
 ```powershell
 cd C:\xampp\htdocs
 git clone https://github.com/TiensAnh/travel_booking_wordpress.git travel_booking
+cd .\travel_booking
 ```
 
-Sau đó bật `Apache` và `MySQL` trong XAMPP.
-
-## Tạo database
-
-Tạo database local:
+## 2. Tạo database WordPress
 
 ```powershell
-C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE travel_booking CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS travel_booking CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-Nếu máy bạn dùng mật khẩu cho MySQL thì thay lại thông tin đăng nhập cho phù hợp.
+Import database demo của WordPress:
 
-## Cấu hình WordPress
+```powershell
+C:\xampp\mysql\bin\mysql.exe -u root travel_booking < .\database\db_travel_booking.sql
+```
 
-Project đang có sẵn `wp-config-sample.php`. Sau khi clone, làm 1 trong 2 cách:
-
-1. Nếu repo đã có `wp-config.php`, sửa lại thông số database cho máy local.
-2. Nếu repo không có `wp-config.php`, copy từ file sample:
+## 3. Tạo `wp-config.php`
 
 ```powershell
 Copy-Item .\wp-config-sample.php .\wp-config.php
 ```
 
-Cập nhật các giá trị trong `wp-config.php`:
+Sửa lại thông tin DB trong `wp-config.php`:
 
 ```php
 define( 'DB_NAME', 'travel_booking' );
@@ -51,117 +71,179 @@ define( 'DB_PASSWORD', '' );
 define( 'DB_HOST', 'localhost' );
 ```
 
-## Chạy project
+## 4. Tạo database cho backend API
 
-Sau khi cấu hình xong, truy cập:
+Backend dùng database riêng để quản lý:
+
+- users
+- tours
+- bookings
+- payments
+- reviews
+
+Tạo database:
+
+```powershell
+C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS travel_booking_api CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+Import schema và seed:
+
+```powershell
+C:\xampp\mysql\bin\mysql.exe -u root travel_booking_api < .\backend-api\database\schema.sql
+C:\xampp\mysql\bin\mysql.exe -u root travel_booking_api < .\backend-api\database\seed.sql
+```
+
+## 5. Cấu hình backend API
+
+Tạo file môi trường:
+
+```powershell
+Copy-Item .\backend-api\.env.example .\backend-api\.env
+```
+
+File `.env.example` đã được chỉnh sẵn theo local hiện tại:
+
+```env
+PORT=5000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=
+DB_NAME=travel_booking_api
+FRONTEND_URL=http://localhost/travel_booking
+JWT_SECRET=secret123
+```
+
+Nếu máy bạn dùng MySQL có mật khẩu thì đổi `DB_PASS` cho đúng.
+
+## 6. Cài package và chạy backend
+
+```powershell
+cd .\backend-api
+npm install
+npm run dev
+```
+
+Hoặc:
+
+```powershell
+npm start
+```
+
+Khi backend chạy đúng, bạn sẽ có API tại:
+
+```text
+http://127.0.0.1:5000/api
+```
+
+Health check:
+
+```text
+http://127.0.0.1:5000/api/health
+```
+
+## 7. Chạy WordPress
+
+Bật `Apache` và `MySQL` trong XAMPP, sau đó mở:
 
 ```text
 http://localhost/travel_booking
 ```
 
-Nếu database chưa có dữ liệu WordPress, hãy chạy wizard cài đặt của WordPress. Nếu database đã được import sẵn thì site sẽ vào thẳng trang chủ hoặc trang đăng nhập.
+## 8. Việc cần làm trong WordPress admin
 
-## Kích hoạt theme
+Sau khi đăng nhập `wp-admin`, kiểm tra các bước sau:
 
-Đăng nhập vào `wp-admin`, sau đó:
+1. `Appearance > Themes`
+   Kích hoạt `Travel Agency Modern`
 
-1. Vào `Appearance > Themes`
-2. Kích hoạt theme `Travel Agency Modern`
-3. Đảm bảo parent theme `travel-agency` vẫn tồn tại trong `wp-content/themes`
+2. `Tools > Sync Tours API`
+   Bấm `Sync tours now`
 
-Lưu ý: `travel-agency-modern` là child theme, nên nếu thiếu parent theme `travel-agency` thì site sẽ không chạy đúng giao diện.
+3. `Settings > Permalinks`
+   Bấm `Save Changes` một lần để refresh rewrite rules
 
-## Việc cần làm sau khi clone
+4. Tạo hoặc kiểm tra page `Tài khoản`
+   Chọn template: `Tài khoản backend`
+   Gợi ý slug: `tai-khoan`
 
-Để site hiển thị gần giống máy gốc, nên kiểm tra và thực hiện thêm:
+5. Kiểm tra page `Thanh toán`
+   Chọn template: `Thanh toán tour`
 
-1. Vào `Settings > Permalinks` và bấm `Save Changes` 1 lần
-2. Tạo menu và gán vào các vị trí:
-   - `Menu chính`
-   - `Menu chân trang`
-3. Tạo các trang và chọn template phù hợp:
-   - `Danh sách tour`
-   - `Giới thiệu nổi bật`
-   - `Liên hệ nổi bật`
-   - `Thanh toán tour`
-4. Tạo dữ liệu cho custom post type `Tour`
-5. Tạo taxonomy `Điểm đến`
-6. Cập nhật thông tin liên hệ trong `Customizer`
+## 9. Những gì đã được nối sang backend API
 
-## Các tính năng chính
+Theme WordPress hiện tại đã dùng backend cho các luồng sau:
 
-- Child theme `Travel Agency Modern`
-- Custom post type `Tour`
-- Taxonomy `Điểm đến`
-- Tìm kiếm và lọc tour theo thời gian thực
-- Form liên hệ / yêu cầu đặt tour
-- Đăng nhập / đăng ký bằng AJAX modal
-- Nhiều page template riêng cho website du lịch
+- Đăng nhập backend
+- Đăng ký backend
+- Đồng bộ tour từ backend vào custom post type `tour`
+- Tạo booking khi checkout
+- Tạo payment request khi checkout
+- Lấy review thật theo tour
+- Gửi review từ trang tour
+- Xem booking của người dùng ở trang `Tài khoản`
+- Xem chi tiết booking
+- Xem lịch sử thanh toán của booking
+- Huỷ booking `PENDING`
+- Xem review đã gửi của chính người dùng
 
-## Các file và thư mục quan trọng
+## 10. Tài khoản demo backend
 
-```text
-wp-content/
-  themes/
-    travel-agency/
-    travel-agency-modern/
-      assets/
-      template-parts/
-      templates/
-      functions.php
-      header.php
-      footer.php
-      style.css
-```
+Từ `backend-api/database/seed.sql`, bạn có thể dùng nhanh:
 
-## Dữ liệu có thể chưa có trong Git
+- `user1@gmail.com` / `123456`
+- `user2@gmail.com` / `123456`
+- `user3@gmail.com` / `123456`
 
-Sau khi clone code, site vẫn có thể chưa giống 100% máy gốc nếu bạn chưa có:
+Lưu ý:
 
-- Database export (`.sql`)
-- Ảnh trong `wp-content/uploads`
-- Cấu hình plugin
-- Menu đã tạo
-- Widgets
-- Customizer settings
-- Tài khoản admin gốc
+- Đây là dữ liệu demo
+- Một số booking seed có thể chưa ở trạng thái `COMPLETED`, nên form review chỉ hiện khi backend trả về booking đủ điều kiện đánh giá
 
-Nếu muốn dựng y hệt bản local gốc, bạn cần thêm database dump và thư mục `uploads`.
+## 11. Nếu người khác clone repo này
 
-## Lưu ý về email
+Để người khác thấy được gần đúng giao diện và backend flow, họ cần:
 
-Theme có sử dụng `wp_mail()` cho một số form. Trên máy local, email có thể không gửi được nếu chưa cấu hình SMTP. Trường hợp này là bình thường.
+1. Clone repo
+2. Import `database/db_travel_booking.sql`
+3. Import `backend-api/database/schema.sql`
+4. Import `backend-api/database/seed.sql`
+5. Chạy backend Node
+6. Chạy WordPress
+7. Sync tour từ `Tools > Sync Tours API`
 
-## Lỗi thường gặp
+Nếu bỏ qua backend thì:
 
-1. Site báo lỗi kết nối database
-   - Kiểm tra lại `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`
-2. Theme lỗi sau khi kích hoạt
-   - Kiểm tra parent theme `travel-agency` đã tồn tại chưa
-3. Trang chỉ hiện layout trống hoặc thiếu nội dung
-   - Bạn chưa import database hoặc chưa tạo dữ liệu `Tour`, menu, trang
-4. Link bài viết / trang bị 404
-   - Vào `Settings > Permalinks` và bấm `Save Changes`
-5. Form gửi không có email
-   - Môi trường local chưa cấu hình SMTP
+- giao diện WordPress vẫn lên
+- nhưng auth, booking, payment, review theo API sẽ không hoạt động đúng
 
-## Gợi ý workflow Git
+## 12. Git lưu ý
 
-```powershell
-git pull
-git checkout -b feature/ten-nhanh
-git add .
-git commit -m "Mo ta thay doi"
-git push -u origin feature/ten-nhanh
-```
+Repo này nên commit:
 
-## Khuyến nghị
+- `README.md`
+- `backend-api/`
+- `database/db_travel_booking.sql`
+- `wp-content/themes/travel-agency-modern/`
+- `wp-content/themes/travel-agency/` nếu muốn clone về chạy ngay child theme
 
-Không nên đưa các file sau lên Git:
+Không nên commit:
 
 - `wp-config.php`
-- database dump chứa thông tin nhạy cảm
-- `wp-content/uploads/`
-- cache, log, file tạm
+- `node_modules/`
+- cache, log
+- file nhạy cảm chứa secret thật
 
-Nếu sau này muốn tối ưu repo, nên chỉ giữ phần custom code như theme, plugin tự viết và file hướng dẫn setup, thay vì commit toàn bộ WordPress core.
+## 13. API admin của dự án cũ
+
+Repo vẫn giữ nguyên backend admin-side trong `backend-api`, bao gồm:
+
+- `admin-auth`
+- admin bookings
+- admin payments
+- admin reviews
+- `stats`
+- `users`
+
+Phần này chưa được render thành giao diện riêng trong WordPress vì WordPress đã có admin area của riêng nó. Tuy nhiên service Node vẫn còn đầy đủ để bạn mở rộng dashboard riêng sau này.

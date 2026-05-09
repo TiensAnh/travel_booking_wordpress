@@ -9,6 +9,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'TAM_THEME_VERSION', '1.0.0' );
 
+require_once get_theme_file_path( '/inc/api-integration.php' );
+
 /**
  * Return a cache-busting version based on file modified time.
  *
@@ -90,7 +92,7 @@ add_action( 'wp_enqueue_scripts', 'tam_dequeue_parent_assets', 100 );
 function tam_enqueue_assets() {
 	wp_enqueue_style(
 		'travel-agency-modern-fonts',
-		'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;600;700&display=swap',
+		'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
 		array(),
 		null
 	);
@@ -128,6 +130,18 @@ function tam_enqueue_assets() {
 			'tourFilterNonce'   => wp_create_nonce( 'tam_tour_filter' ),
 			'tourSearchDelay'   => 380,
 			'tourSearchMinLoad' => 650,
+			'checkoutQuoteAction'   => 'tam_checkout_quote',
+			'checkoutQuoteNonce'    => wp_create_nonce( 'tam_checkout_quote' ),
+			'checkoutSessionAction' => 'tam_checkout_create_session',
+			'checkoutSessionNonce'  => wp_create_nonce( 'tam_checkout_create_session' ),
+			'checkoutInvoiceAction' => 'tam_download_checkout_invoice',
+			'checkoutMessages'      => array(
+				'genericError'   => __( 'He thong dang ban, vui long thu lai sau it phut.', 'travel-agency-modern' ),
+				'quoteLoading'   => __( 'Dang cap nhat tong thanh toan...', 'travel-agency-modern' ),
+				'paymentLoading' => __( 'Dang tao booking va chuyen sang cong thanh toan...', 'travel-agency-modern' ),
+				'loginRequired'  => __( 'Ban can dang nhap truoc khi thanh toan.', 'travel-agency-modern' ),
+				'backendUnavailable' => __( 'Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.', 'travel-agency-modern' ),
+			),
 		)
 	);
 }
@@ -1105,6 +1119,14 @@ function tam_get_tour_image_url( $post_id, $size = 'tam-tour-card' ) {
 		}
 	}
 
+	if ( function_exists( 'tam_backend_api_get_tour_image_for_post' ) ) {
+		$api_image_url = tam_backend_api_get_tour_image_for_post( $post_id );
+
+		if ( $api_image_url ) {
+			return $api_image_url;
+		}
+	}
+
 	return tam_get_tour_fallback_image_url( $post_id );
 }
 
@@ -1640,6 +1662,14 @@ function tam_get_tour_service_list( $tour_meta, $type = 'includes' ) {
  * @param array $tour_meta Normalized meta.
  */
 function tam_get_tour_reviews( $post_id, $tour_meta ) {
+	if ( function_exists( 'tam_backend_api_get_reviews_for_post' ) ) {
+		$api_reviews = tam_backend_api_get_reviews_for_post( $post_id );
+
+		if ( ! empty( $api_reviews ) ) {
+			return $api_reviews;
+		}
+	}
+
 	$structured_rows = tam_parse_structured_rows( isset( $tour_meta['review_snippets'] ) ? $tour_meta['review_snippets'] : '', 3 );
 
 	if ( ! empty( $structured_rows ) ) {
@@ -1709,6 +1739,49 @@ function tam_get_default_checkout_tour_id() {
  */
 function tam_get_checkout_payment_methods() {
 	return array(
+		'vnpay'   => array(
+			'label'       => __( 'VNPay', 'travel-agency-modern' ),
+			'description' => __( 'Thanh toan qua cong VNPay voi trai nghiem redirect nhanh, quen thuoc va tin cay.', 'travel-agency-modern' ),
+			'icon'        => 'VNPAY',
+			'icon_class'  => 'fa-solid fa-wallet',
+			'tone'        => '#0f7cff',
+			'badge'       => __( 'Pho bien', 'travel-agency-modern' ),
+		),
+		'momo'    => array(
+			'label'       => __( 'MoMo', 'travel-agency-modern' ),
+			'description' => __( 'Phu hop mobile-first, thanh toan trong vai thao tac va nhan thong bao nhanh.', 'travel-agency-modern' ),
+			'icon'        => 'MOMO',
+			'icon_class'  => 'fa-solid fa-mobile-screen-button',
+			'tone'        => '#b0006d',
+			'badge'       => __( 'Mobile', 'travel-agency-modern' ),
+		),
+		'zalopay' => array(
+			'label'       => __( 'ZaloPay', 'travel-agency-modern' ),
+			'description' => __( 'Toi uu cho khach hang tre, thanh toan nhanh va quen thuoc trong he sinh thai Zalo.', 'travel-agency-modern' ),
+			'icon'        => 'ZALO',
+			'icon_class'  => 'fa-solid fa-bolt',
+			'tone'        => '#0068ff',
+			'badge'       => __( 'Nhanh', 'travel-agency-modern' ),
+		),
+		'bank'    => array(
+			'label'       => __( 'Chuyen khoan ngan hang', 'travel-agency-modern' ),
+			'description' => __( 'Phu hop voi booking gia tri lon, hien thi thong tin tai khoan de doi soat de dang.', 'travel-agency-modern' ),
+			'icon'        => 'BANK',
+			'icon_class'  => 'fa-solid fa-building-columns',
+			'tone'        => '#1a7f64',
+			'badge'       => __( 'Doanh nghiep', 'travel-agency-modern' ),
+		),
+		'card'    => array(
+			'label'       => __( 'The quoc te', 'travel-agency-modern' ),
+			'description' => __( 'Visa, Mastercard, JCB va cac loai the quoc te khac cho khach nuoc ngoai.', 'travel-agency-modern' ),
+			'icon'        => 'CARD',
+			'icon_class'  => 'fa-regular fa-credit-card',
+			'tone'        => '#6a42ff',
+			'badge'       => __( 'Visa / MC', 'travel-agency-modern' ),
+		),
+	);
+
+	return array(
 		'cod'    => array(
 			'label'       => __( 'Thanh toán khi đến (COD)', 'travel-agency-modern' ),
 			'description' => __( 'Giữ chỗ trước, thanh toán khi gặp nhân viên xác nhận hoặc tại điểm hẹn.', 'travel-agency-modern' ),
@@ -1748,6 +1821,10 @@ function tam_get_checkout_context() {
 	$departure_options = tam_get_tour_departure_options( $tour_meta );
 	$requested_people  = isset( $_GET['party_size'] ) ? absint( wp_unslash( $_GET['party_size'] ) ) : 2;
 	$people            = max( 1, min( 30, $requested_people ) );
+	$requested_children = isset( $_GET['children'] ) ? absint( wp_unslash( $_GET['children'] ) ) : 0;
+	$children          = max( 0, min( 20, $requested_children ) );
+	$adults            = max( 1, min( 20, $people - $children ) );
+	$people            = $adults + $children;
 	$selected_date     = isset( $_GET['travel_date'] ) ? sanitize_text_field( wp_unslash( $_GET['travel_date'] ) ) : '';
 	$date_lookup       = array();
 
@@ -1770,10 +1847,13 @@ function tam_get_checkout_context() {
 	$price_raw     = (int) preg_replace( '/[^\d]/', '', (string) $tour_meta['price_from'] );
 	$price_display = tam_format_tour_price( $tour_meta['price_from'] );
 	$total_raw     = $price_raw > 0 ? $price_raw * $people : 0;
+	$api_tour_id   = function_exists( 'tam_backend_api_get_tour_id_for_post' ) ? tam_backend_api_get_tour_id_for_post( $tour_id ) : 0;
 
 	return array(
 		'has_tour'          => true,
 		'post_id'           => $tour_id,
+		'api_tour_id'       => $api_tour_id,
+		'can_checkout_api'  => $api_tour_id > 0,
 		'title'             => get_the_title( $tour_id ),
 		'visual'            => tam_get_tour_image_url( $tour_id, 'tam-tour-card' ),
 		'destination'       => ! empty( $destinations ) ? implode( ' • ', wp_list_pluck( $destinations, 'name' ) ) : __( 'Đang cập nhật', 'travel-agency-modern' ),
@@ -1784,6 +1864,8 @@ function tam_get_checkout_context() {
 		'total_raw'         => $total_raw,
 		'total_display'     => $total_raw ? tam_format_tour_price( (string) $total_raw ) : $price_display,
 		'people'            => $people,
+		'adults'            => $adults,
+		'children'          => $children,
 		'selected_date'     => $selected_date,
 		'selected_date_text'=> isset( $date_lookup[ $selected_date ] ) ? $date_lookup[ $selected_date ] : $selected_date,
 		'departure_options' => $departure_options,
@@ -2142,7 +2224,7 @@ function tam_public_redirect_with_status( $query_key, $status, $redirect_url ) {
  * Render the global auth modal for guests.
  */
 function tam_render_auth_modal() {
-	if ( is_user_logged_in() ) {
+	if ( is_user_logged_in() || tam_backend_api_is_authenticated() ) {
 		return;
 	}
 
@@ -2240,6 +2322,15 @@ function tam_render_auth_modal() {
 								</div>
 
 								<div class="tam-auth-form__field" data-auth-field>
+									<label for="tam-register-phone"><?php esc_html_e( 'Số điện thoại', 'travel-agency-modern' ); ?></label>
+									<div class="tam-auth-form__control">
+										<span class="tam-auth-form__icon"><i class="fa-solid fa-phone" aria-hidden="true"></i></span>
+										<input type="text" id="tam-register-phone" name="register_phone" placeholder="<?php esc_attr_e( 'Ví dụ: 0901234567', 'travel-agency-modern' ); ?>" autocomplete="tel" inputmode="tel" required />
+									</div>
+									<p class="tam-auth-form__error" data-auth-error-for="register_phone"></p>
+								</div>
+
+								<div class="tam-auth-form__field" data-auth-field>
 									<label for="tam-register-email"><?php esc_html_e( 'Email', 'travel-agency-modern' ); ?></label>
 									<div class="tam-auth-form__control">
 										<span class="tam-auth-form__icon"><i class="fa-regular fa-envelope" aria-hidden="true"></i></span>
@@ -2296,7 +2387,7 @@ add_action( 'wp_footer', 'tam_render_auth_modal', 30 );
  * Handle AJAX login from the auth modal.
  */
 function tam_handle_auth_login() {
-	if ( is_user_logged_in() ) {
+	if ( tam_backend_api_is_authenticated() ) {
 		wp_send_json_success(
 			array(
 				'message'     => __( 'Bạn đã đăng nhập sẵn rồi.', 'travel-agency-modern' ),
@@ -2385,7 +2476,7 @@ add_action( 'wp_ajax_tam_auth_login', 'tam_handle_auth_login' );
  * Handle AJAX registration from the auth modal.
  */
 function tam_handle_auth_register() {
-	if ( is_user_logged_in() ) {
+	if ( tam_backend_api_is_authenticated() ) {
 		wp_send_json_success(
 			array(
 				'message'     => __( 'Tài khoản của bạn đã sẵn sàng.', 'travel-agency-modern' ),
@@ -2821,7 +2912,7 @@ function tam_get_tour_query_args( $search_term = '', $selected_dest = '', $paged
 	$query_args = array(
 		'post_type'      => 'tour',
 		'post_status'    => 'publish',
-		'posts_per_page' => 9,
+		'posts_per_page' => 10,
 		'paged'          => max( 1, (int) $paged ),
 		's'              => sanitize_text_field( $search_term ),
 	);
@@ -2994,6 +3085,22 @@ function tam_handle_tour_filter_request() {
 	$selected_dest = isset( $_POST['destination'] ) ? sanitize_title( wp_unslash( $_POST['destination'] ) ) : '';
 	$current_page  = isset( $_POST['paged'] ) ? max( 1, absint( wp_unslash( $_POST['paged'] ) ) ) : 1;
 	$base_url      = isset( $_POST['page_url'] ) ? esc_url_raw( wp_unslash( $_POST['page_url'] ) ) : tam_get_page_url_by_path( 'tour' );
+
+	if ( function_exists( 'tam_backend_api_get_tour_archive_payload' ) ) {
+		$backend_payload = tam_backend_api_get_tour_archive_payload( $search_term, $selected_dest, $current_page, $base_url );
+
+		if ( ! empty( $backend_payload['success'] ) ) {
+			wp_send_json_success(
+				array(
+					'html'        => isset( $backend_payload['html'] ) ? $backend_payload['html'] : '',
+					'foundPosts'  => isset( $backend_payload['found_posts'] ) ? (int) $backend_payload['found_posts'] : 0,
+					'currentPage' => isset( $backend_payload['current_page'] ) ? (int) $backend_payload['current_page'] : $current_page,
+					'summary'     => isset( $backend_payload['summary'] ) ? $backend_payload['summary'] : '',
+				)
+			);
+		}
+	}
+
 	$tour_query    = new WP_Query( tam_get_tour_query_args( $search_term, $selected_dest, $current_page ) );
 	$found_posts   = (int) $tour_query->found_posts;
 

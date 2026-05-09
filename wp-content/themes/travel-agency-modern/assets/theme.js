@@ -45,6 +45,55 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const themeConfig = window.tamTheme || {};
+  const pendingLoginRedirectKey = "tamPendingLoginRedirect";
+  const getSessionStorage = function () {
+    try {
+      return window.sessionStorage;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const setPendingLoginRedirect = function (url) {
+    const storage = getSessionStorage();
+
+    if (!storage || !url) {
+      return;
+    }
+
+    storage.setItem(pendingLoginRedirectKey, url);
+  };
+
+  const consumePendingLoginRedirect = function () {
+    const storage = getSessionStorage();
+
+    if (!storage) {
+      return "";
+    }
+
+    const redirectUrl = storage.getItem(pendingLoginRedirectKey) || "";
+
+    if (redirectUrl) {
+      storage.removeItem(pendingLoginRedirectKey);
+    }
+
+    return redirectUrl;
+  };
+
+  const requestLogin = function (redirectUrl) {
+    if (redirectUrl) {
+      setPendingLoginRedirect(redirectUrl);
+    }
+
+    const loginTrigger = document.querySelector('[data-auth-open="login"]');
+
+    if (loginTrigger) {
+      loginTrigger.click();
+      return true;
+    }
+
+    return false;
+  };
   const authModal = document.querySelector("[data-auth-modal]");
   const authTriggers = document.querySelectorAll("[data-auth-open]");
 
@@ -228,6 +277,7 @@ document.addEventListener("DOMContentLoaded", function () {
         login_email: "Vui l\u00f2ng nh\u1eadp email.",
         login_password: "Vui l\u00f2ng nh\u1eadp m\u1eadt kh\u1ea9u.",
         register_name: "Vui l\u00f2ng nh\u1eadp h\u1ecd t\u00ean.",
+        register_phone: "Vui l\u00f2ng nh\u1eadp s\u1ed1 \u0111i\u1ec7n tho\u1ea1i.",
         register_email: "Vui l\u00f2ng nh\u1eadp email.",
         register_password: "Vui l\u00f2ng nh\u1eadp m\u1eadt kh\u1ea9u.",
         register_confirm_password: "Vui l\u00f2ng x\u00e1c nh\u1eadn m\u1eadt kh\u1ea9u."
@@ -264,8 +314,17 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       if (formType === "register") {
+        const phoneField = form.querySelector('[name="register_phone"]');
         const passwordField = form.querySelector('[name="register_password"]');
         const confirmField = form.querySelector('[name="register_confirm_password"]');
+
+        if (phoneField && phoneField.value && !/^[0-9]{9,11}$/.test(phoneField.value.trim())) {
+          setFieldError(form, "register_phone", "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i ph\u1ea3i g\u1ed3m 9-11 ch\u1eef s\u1ed1.");
+          if (!firstInvalidField) {
+            firstInvalidField = phoneField;
+          }
+          isValid = false;
+        }
 
         if (passwordField && passwordField.value && passwordField.value.length < 6) {
           setFieldError(form, "register_password", "M\u1eadt kh\u1ea9u c\u1ea7n t\u1ed1i thi\u1ec3u 6 k\u00fd t\u1ef1.");
@@ -399,7 +458,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             window.setTimeout(function () {
-              window.location.href = payload.redirectUrl || themeConfig.redirectUrl || window.location.href;
+              const pendingRedirect = consumePendingLoginRedirect();
+              window.location.href = pendingRedirect || payload.redirectUrl || themeConfig.redirectUrl || window.location.href;
             }, Number(themeConfig.successDelay || 900));
           })
           .catch(function (payload) {
@@ -533,6 +593,11 @@ document.addEventListener("DOMContentLoaded", function () {
             nextUrl.searchParams.set("travel_date", bookingDateField.value);
           }
 
+          if (bookingBox.getAttribute("data-authenticated") !== "true") {
+            requestLogin(nextUrl.toString());
+            return;
+          }
+
           window.location.href = nextUrl.toString();
           return;
         }
@@ -564,6 +629,1131 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     syncBookingState();
+  }
+
+  const bookingWizard = document.querySelector("[data-booking-wizard]");
+
+  if (bookingWizard) {
+    const bookingForm = bookingWizard.querySelector("[data-booking-form]");
+    const stepPanels = bookingWizard.querySelectorAll("[data-step-panel]");
+    const stepIndicators = bookingWizard.querySelectorAll("[data-step-indicator]");
+    const progressFill = bookingWizard.querySelector("[data-booking-progress-fill]");
+    const summaryCard = bookingWizard.querySelector("[data-booking-summary-card]");
+    const summarySkeleton = bookingWizard.querySelector("[data-booking-summary-skeleton]");
+    const couponInput = bookingWizard.querySelector("[data-booking-coupon]");
+    const couponButton = bookingWizard.querySelector("[data-apply-coupon]");
+    const paymentFields = bookingWizard.querySelectorAll("[data-payment-method]");
+    const paymentPlanFields = bookingWizard.querySelectorAll("[data-payment-plan]");
+    const payButton = bookingWizard.querySelector("[data-submit-payment]");
+    const payLabel = bookingWizard.querySelector(".tam-booking-flow__pay-label");
+    const payLoader = bookingWizard.querySelector(".tam-booking-flow__pay-loader");
+    const reviewContactName = bookingWizard.querySelector("[data-review-contact-name]");
+    const reviewContactEmail = bookingWizard.querySelector("[data-review-contact-email]");
+    const reviewContactPhone = bookingWizard.querySelector("[data-review-contact-phone]");
+    const reviewContactCountry = bookingWizard.querySelector("[data-review-contact-country]");
+    const summaryDate = bookingWizard.querySelector("[data-summary-date]");
+    const summaryHeadcount = bookingWizard.querySelector("[data-summary-headcount]");
+    const summaryAdultPrice = bookingWizard.querySelector("[data-summary-adult-price]");
+    const summaryChildPrice = bookingWizard.querySelector("[data-summary-child-price]");
+    const summarySubtotal = bookingWizard.querySelector("[data-summary-subtotal]");
+    const summaryTax = bookingWizard.querySelector("[data-summary-tax]");
+    const summaryFee = bookingWizard.querySelector("[data-summary-fee]");
+    const summaryDiscount = bookingWizard.querySelector("[data-summary-discount]");
+    const summaryPaymentPlan = bookingWizard.querySelector("[data-summary-payment-plan]");
+    const summaryPayNow = bookingWizard.querySelector("[data-summary-pay-now]");
+    const summaryRemaining = bookingWizard.querySelector("[data-summary-remaining]");
+    const summaryTotal = bookingWizard.querySelector("[data-summary-total]");
+    const summaryStatus = bookingWizard.querySelector("[data-booking-summary-status]");
+    const summaryMessage = bookingWizard.querySelector("[data-booking-summary-message]");
+    const summaryTravelDate = bookingWizard.querySelector("[data-booking-summary-date]");
+    const summaryTravellers = bookingWizard.querySelector("[data-booking-summary-travellers]");
+    const ajaxUrl = themeConfig.ajaxUrl || window.ajaxurl || "";
+    const quoteAction = themeConfig.checkoutQuoteAction || "tam_checkout_quote";
+    const quoteNonce = themeConfig.checkoutQuoteNonce || "";
+    const sessionAction = themeConfig.checkoutSessionAction || "tam_checkout_create_session";
+    const sessionNonce = themeConfig.checkoutSessionNonce || "";
+    const checkoutMessages = themeConfig.checkoutMessages || {};
+    const canCheckout = bookingWizard.getAttribute("data-can-checkout") === "true";
+    const basePrice = parseInt(bookingWizard.getAttribute("data-base-price") || "0", 10) || 0;
+    const childPrice = parseInt(bookingWizard.getAttribute("data-child-price") || "0", 10) || Math.round(basePrice * 0.7);
+    const taxRate = parseFloat(bookingWizard.getAttribute("data-tax-rate") || "0.08") || 0.08;
+    const serviceFee = parseInt(bookingWizard.getAttribute("data-service-fee") || "39000", 10) || 39000;
+    const depositRate = parseFloat(bookingWizard.getAttribute("data-deposit-rate") || "0.3") || 0.3;
+    const accountUrl = bookingWizard.getAttribute("data-account-url") || "/";
+    const stepOneFields = ["contact_name", "contact_phone", "contact_email", "contact_country", "adults_count", "children_count", "travel_date"];
+    const stepThreeFields = ["accept_terms"];
+    let currentStep = Math.max(1, Math.min(4, parseInt(bookingWizard.getAttribute("data-current-step") || "1", 10) || 1));
+    let quoteController = null;
+    let quoteSequence = 0;
+    let cachedQuote = null;
+    let lastQuoteSignature = "";
+    let submitLocked = false;
+    let checkoutRequestId = bookingWizard.getAttribute("data-request-id") || "";
+    let checkoutBackendReady = true;
+    const draftStorageKey = "tamCheckoutDraft";
+
+    const saveCheckoutDraft = function () {
+      const storage = getSessionStorage();
+
+      if (!storage || !bookingForm) {
+        return;
+      }
+
+      const draft = {
+        tourId: bookingWizard.getAttribute("data-tour-id") || "",
+        step: currentStep,
+        savedAt: Date.now(),
+        fields: {}
+      };
+
+      bookingForm.querySelectorAll("input, select, textarea").forEach(function (field) {
+        if (!field.name) {
+          return;
+        }
+
+        if (field.type === "checkbox") {
+          draft.fields[field.name] = Boolean(field.checked);
+          return;
+        }
+
+        if (field.type === "radio") {
+          if (field.checked) {
+            draft.fields[field.name] = field.value;
+          }
+          return;
+        }
+
+        draft.fields[field.name] = field.value;
+      });
+
+      storage.setItem(draftStorageKey, JSON.stringify(draft));
+    };
+
+    const restoreCheckoutDraft = function () {
+      const storage = getSessionStorage();
+
+      if (!storage || !bookingForm) {
+        return;
+      }
+
+      const rawDraft = storage.getItem(draftStorageKey);
+
+      if (!rawDraft) {
+        return;
+      }
+
+      try {
+        const draft = JSON.parse(rawDraft);
+
+        if (!draft || String(draft.tourId || "") !== String(bookingWizard.getAttribute("data-tour-id") || "")) {
+          return;
+        }
+
+        Object.keys(draft.fields || {}).forEach(function (fieldName) {
+          const field = bookingForm.querySelector('[name="' + fieldName + '"]');
+
+          if (!field) {
+            return;
+          }
+
+          if (field.type === "checkbox") {
+            field.checked = Boolean(draft.fields[fieldName]);
+            return;
+          }
+
+          if (field.type === "radio") {
+            bookingForm.querySelectorAll('[name="' + fieldName + '"]').forEach(function (radio) {
+              radio.checked = radio.value === draft.fields[fieldName];
+            });
+            return;
+          }
+
+          field.value = draft.fields[fieldName];
+        });
+
+        if (draft.step && bookingWizard.getAttribute("data-current-step") !== "4") {
+          currentStep = Math.max(1, Math.min(3, parseInt(draft.step, 10) || 1));
+        }
+      } catch (error) {
+        storage.removeItem(draftStorageKey);
+      }
+    };
+
+    const clearCheckoutDraft = function () {
+      const storage = getSessionStorage();
+
+      if (!storage) {
+        return;
+      }
+
+      storage.removeItem(draftStorageKey);
+    };
+
+    const debounce = function (callback, delay) {
+      let timeoutId = 0;
+
+      return function () {
+        const args = arguments;
+        window.clearTimeout(timeoutId);
+        timeoutId = window.setTimeout(function () {
+          callback.apply(null, args);
+        }, delay);
+      };
+    };
+
+    const ensureToastRoot = function () {
+      let root = document.querySelector(".tam-booking-toast-root");
+
+      if (!root) {
+        root = document.createElement("div");
+        root.className = "tam-booking-toast-root";
+        document.body.appendChild(root);
+      }
+
+      return root;
+    };
+
+    const showToast = function (message, tone) {
+      if (!message) {
+        return;
+      }
+
+      const root = ensureToastRoot();
+      const toast = document.createElement("div");
+      const currentTone = tone || "info";
+
+      toast.className = "tam-booking-toast is-" + currentTone;
+      toast.textContent = message;
+      root.appendChild(toast);
+
+      window.setTimeout(function () {
+        toast.classList.add("is-visible");
+      }, 20);
+
+      window.setTimeout(function () {
+        toast.classList.remove("is-visible");
+        window.setTimeout(function () {
+          toast.remove();
+        }, 240);
+      }, 3200);
+    };
+
+    const isMissingRouteMessage = function (message) {
+      return /route not found/i.test(String(message || ""));
+    };
+
+    const normalizeCheckoutMessage = function (message, fallbackMessage) {
+      if (isMissingRouteMessage(message)) {
+        return checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.";
+      }
+
+      return message || fallbackMessage;
+    };
+
+    const markCheckoutBackendUnavailable = function () {
+      checkoutBackendReady = false;
+
+      if (summaryStatus) {
+        summaryStatus.textContent = "Backend chua san sang";
+      }
+
+      if (summaryMessage) {
+        summaryMessage.textContent = checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.";
+      }
+
+      if (payButton) {
+        payButton.disabled = true;
+      }
+    };
+
+    const formatPrice = function (value) {
+      return new Intl.NumberFormat("vi-VN").format(Math.max(0, Math.round(Number(value || 0)))) + "đ";
+    };
+
+    const createRequestId = function () {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return "req_" + Date.now() + "_" + window.crypto.randomUUID();
+      }
+
+      return "req_" + Date.now() + "_" + Math.random().toString(16).slice(2, 10);
+    };
+
+    const normalizePaymentPlan = function (value) {
+      return String(value || "").toUpperCase() === "DEPOSIT" ? "DEPOSIT" : "FULL";
+    };
+
+    const getPaymentPlanLabel = function (value) {
+      return normalizePaymentPlan(value) === "DEPOSIT" ? "Dat coc truoc" : "Thanh toan toan bo";
+    };
+
+    const resetCheckoutSessionAttempt = function () {
+      checkoutRequestId = "";
+      bookingWizard.removeAttribute("data-request-id");
+    };
+
+    const setSummaryLoading = function (isLoading) {
+      if (!summaryCard) {
+        return;
+      }
+
+      summaryCard.classList.toggle("is-loading", Boolean(isLoading));
+      summaryCard.setAttribute("aria-busy", isLoading ? "true" : "false");
+
+      if (summarySkeleton) {
+        summarySkeleton.setAttribute("aria-hidden", isLoading ? "false" : "true");
+      }
+    };
+
+    const getField = function (name) {
+      return bookingForm ? bookingForm.querySelector('[name="' + name + '"]') : null;
+    };
+
+    const getFieldWrapper = function (name) {
+      return bookingForm ? bookingForm.querySelector('[data-booking-field="' + name + '"]') : null;
+    };
+
+    const setFieldError = function (name, message) {
+      const wrapper = getFieldWrapper(name);
+      const field = getField(name);
+      const errorNode = wrapper ? wrapper.querySelector("[data-field-error]") : null;
+
+      if (wrapper) {
+        wrapper.classList.add("is-error");
+      }
+
+      if (field) {
+        field.setAttribute("aria-invalid", "true");
+      }
+
+      if (errorNode) {
+        errorNode.textContent = message || "";
+      }
+    };
+
+    const clearFieldError = function (name) {
+      const wrapper = getFieldWrapper(name);
+      const field = getField(name);
+      const errorNode = wrapper ? wrapper.querySelector("[data-field-error]") : null;
+
+      if (wrapper) {
+        wrapper.classList.remove("is-error");
+      }
+
+      if (field) {
+        field.setAttribute("aria-invalid", "false");
+      }
+
+      if (errorNode) {
+        errorNode.textContent = "";
+      }
+    };
+
+    const collectState = function () {
+      const adultsCount = Math.max(parseInt((getField("adults_count") && getField("adults_count").value) || "1", 10) || 1, 1);
+      const childrenCount = Math.max(parseInt((getField("children_count") && getField("children_count").value) || "0", 10) || 0, 0);
+      const paymentField = bookingForm.querySelector("[data-payment-method]:checked");
+      const paymentPlanField = bookingForm.querySelector("[data-payment-plan]:checked");
+
+      return {
+        tourId: bookingWizard.getAttribute("data-tour-id") || "",
+        apiTourId: bookingWizard.getAttribute("data-api-tour-id") || "",
+        contactName: (getField("contact_name") && getField("contact_name").value.trim()) || "",
+        contactPhone: (getField("contact_phone") && getField("contact_phone").value.trim()) || "",
+        contactEmail: (getField("contact_email") && getField("contact_email").value.trim()) || "",
+        contactCountry: (getField("contact_country") && getField("contact_country").value.trim()) || "",
+        travelDate: (getField("travel_date") && getField("travel_date").value.trim()) || "",
+        adultsCount: adultsCount,
+        childrenCount: childrenCount,
+        travellers: adultsCount + childrenCount,
+        specialRequests: (getField("special_requests") && getField("special_requests").value.trim()) || "",
+        couponCode: (couponInput && couponInput.value.trim()) || "",
+        paymentMethod: paymentField ? paymentField.value : bookingWizard.getAttribute("data-default-payment") || "vnpay",
+        paymentPlan: normalizePaymentPlan(paymentPlanField ? paymentPlanField.value : "FULL"),
+        acceptTerms: Boolean(getField("accept_terms") && getField("accept_terms").checked)
+      };
+    };
+
+    const getDateLabel = function () {
+      const dateField = getField("travel_date");
+      const selectedOption = dateField && dateField.options ? dateField.options[dateField.selectedIndex] : null;
+      return selectedOption ? selectedOption.text : (dateField ? dateField.value : "");
+    };
+
+    const buildEstimatedSummary = function (state) {
+      const subtotal = (basePrice * state.adultsCount) + (childPrice * state.childrenCount);
+      const taxAmount = Math.round(subtotal * taxRate);
+      const feeAmount = subtotal > 0 ? serviceFee : 0;
+      const totalAmount = Math.max(0, subtotal + taxAmount + feeAmount);
+      const paymentPlan = normalizePaymentPlan(state.paymentPlan);
+      const payableNowAmount = paymentPlan === "DEPOSIT"
+        ? Math.max(0, Math.round(totalAmount * depositRate))
+        : totalAmount;
+      const remainingAmount = Math.max(0, totalAmount - payableNowAmount);
+
+      return {
+        pricing: {
+          adultPrice: basePrice,
+          childPrice: childPrice,
+          subtotal: subtotal,
+          taxAmount: taxAmount,
+          feeAmount: feeAmount,
+          discountAmount: 0,
+          totalAmount: totalAmount,
+          payableNowAmount: payableNowAmount,
+          remainingAmount: remainingAmount,
+          paymentPlan: paymentPlan
+        },
+        passengers: {
+          adults: state.adultsCount,
+          children: state.childrenCount,
+          total: state.travellers
+        },
+        travelDate: state.travelDate,
+        coupon: state.couponCode ? { code: state.couponCode } : null
+      };
+    };
+
+    const renderReviewState = function (state) {
+      if (reviewContactName) {
+        reviewContactName.textContent = state.contactName || "--";
+      }
+
+      if (reviewContactEmail) {
+        reviewContactEmail.textContent = state.contactEmail || "--";
+      }
+
+      if (reviewContactPhone) {
+        reviewContactPhone.textContent = state.contactPhone || "--";
+      }
+
+      if (reviewContactCountry) {
+        reviewContactCountry.textContent = state.contactCountry || "--";
+      }
+
+      if (summaryTravelDate) {
+        summaryTravelDate.textContent = getDateLabel() || "--";
+      }
+
+      if (summaryTravellers) {
+        summaryTravellers.textContent = String(state.travellers);
+      }
+    };
+
+    const renderSummary = function (summary, options) {
+      const state = collectState();
+      const meta = options || {};
+      const pricing = summary && summary.pricing ? summary.pricing : buildEstimatedSummary(state).pricing;
+      const passengers = summary && summary.passengers ? summary.passengers : buildEstimatedSummary(state).passengers;
+      const dateLabel = getDateLabel() || state.travelDate || "--";
+
+      if (summaryDate) {
+        summaryDate.textContent = dateLabel;
+      }
+
+      if (summaryHeadcount) {
+        summaryHeadcount.textContent = String(passengers.total || state.travellers);
+      }
+
+      if (summaryAdultPrice) {
+        summaryAdultPrice.textContent = formatPrice(pricing.adultPrice);
+      }
+
+      if (summaryChildPrice) {
+        summaryChildPrice.textContent = formatPrice(pricing.childPrice);
+      }
+
+      if (summarySubtotal) {
+        summarySubtotal.textContent = formatPrice(pricing.subtotal);
+      }
+
+      if (summaryTax) {
+        summaryTax.textContent = formatPrice(pricing.taxAmount);
+      }
+
+      if (summaryFee) {
+        summaryFee.textContent = formatPrice(pricing.feeAmount);
+      }
+
+      if (summaryDiscount) {
+        summaryDiscount.textContent = "-" + formatPrice(pricing.discountAmount);
+      }
+
+      if (summaryPaymentPlan) {
+        summaryPaymentPlan.textContent = getPaymentPlanLabel(pricing.paymentPlan || state.paymentPlan);
+      }
+
+      if (summaryPayNow) {
+        summaryPayNow.textContent = formatPrice(pricing.payableNowAmount || pricing.totalAmount);
+      }
+
+      if (summaryRemaining) {
+        summaryRemaining.textContent = formatPrice(pricing.remainingAmount || 0);
+      }
+
+      if (summaryTotal) {
+        summaryTotal.textContent = formatPrice(pricing.totalAmount);
+      }
+
+      if (summaryStatus) {
+        summaryStatus.textContent = meta.statusText || "Da cap nhat";
+      }
+
+      if (summaryMessage) {
+        summaryMessage.textContent = meta.message || "Gia duoc tinh theo du lieu moi nhat tu backend checkout.";
+      }
+
+      renderReviewState(state);
+    };
+
+    const updatePaymentSelection = function () {
+      paymentFields.forEach(function (field) {
+        const option = field.closest("[data-payment-option]");
+
+        if (!option) {
+          return;
+        }
+
+        option.classList.toggle("is-selected", field.checked);
+      });
+
+      paymentPlanFields.forEach(function (field) {
+        const option = field.closest("[data-payment-plan-option]");
+
+        if (!option) {
+          return;
+        }
+
+        option.classList.toggle("is-selected", field.checked);
+      });
+    };
+
+    const stripFailureQuery = function () {
+      const currentUrl = new URL(window.location.href);
+      let changed = false;
+
+      ["checkout_result", "checkout_tx", "checkout_token"].forEach(function (key) {
+        if (currentUrl.searchParams.has(key)) {
+          currentUrl.searchParams.delete(key);
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        window.history.replaceState({}, "", currentUrl.toString());
+      }
+    };
+
+    const setStep = function (nextStep) {
+      currentStep = Math.max(1, Math.min(4, nextStep));
+      bookingWizard.setAttribute("data-current-step", String(currentStep));
+      saveCheckoutDraft();
+
+      stepPanels.forEach(function (panel) {
+        const panelStep = parseInt(panel.getAttribute("data-step-panel") || "1", 10);
+        const isActive = panelStep === currentStep;
+        panel.classList.toggle("is-active", isActive);
+        panel.setAttribute("aria-hidden", isActive ? "false" : "true");
+      });
+
+      stepIndicators.forEach(function (indicator) {
+        const indicatorStep = parseInt(indicator.getAttribute("data-step-indicator") || "1", 10);
+        indicator.classList.toggle("is-active", indicatorStep === currentStep);
+        indicator.classList.toggle("is-complete", indicatorStep < currentStep);
+      });
+
+      if (progressFill) {
+        progressFill.style.width = String(currentStep * 25) + "%";
+      }
+
+      if (currentStep < 4) {
+        stripFailureQuery();
+      }
+
+      const activePanel = bookingWizard.querySelector('[data-step-panel="' + String(currentStep) + '"]');
+      const focusTarget = activePanel ? activePanel.querySelector("input, select, textarea, button") : null;
+
+      if (focusTarget && currentStep !== 4) {
+        window.setTimeout(function () {
+          focusTarget.focus();
+        }, 120);
+      }
+    };
+
+    const validateField = function (name) {
+      const state = collectState();
+      const field = getField(name);
+
+      if (!field) {
+        return true;
+      }
+
+      clearFieldError(name);
+
+      if (name === "contact_name" && !state.contactName) {
+        setFieldError(name, "Vui long nhap ho ten.");
+        return false;
+      }
+
+      if (name === "contact_phone") {
+        const digits = state.contactPhone.replace(/\D/g, "");
+        if (!digits) {
+          setFieldError(name, "Vui long nhap so dien thoai.");
+          return false;
+        }
+        if (digits.length < 9 || digits.length > 15) {
+          setFieldError(name, "So dien thoai can tu 9 den 15 chu so.");
+          return false;
+        }
+      }
+
+      if (name === "contact_email") {
+        if (!state.contactEmail) {
+          setFieldError(name, "Vui long nhap email.");
+          return false;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail)) {
+          setFieldError(name, "Email chua dung dinh dang.");
+          return false;
+        }
+      }
+
+      if (name === "contact_country" && !state.contactCountry) {
+        setFieldError(name, "Vui long chon quoc gia.");
+        return false;
+      }
+
+      if (name === "travel_date" && !state.travelDate) {
+        setFieldError(name, "Vui long chon ngay khoi hanh.");
+        return false;
+      }
+
+      if (name === "adults_count") {
+        if (state.adultsCount < 1) {
+          setFieldError(name, "Can it nhat 1 nguoi lon.");
+          return false;
+        }
+      }
+
+      if (name === "children_count") {
+        if (state.childrenCount < 0) {
+          setFieldError(name, "So tre em khong hop le.");
+          return false;
+        }
+        if (state.travellers > 30) {
+          setFieldError(name, "Tong so hanh khach toi da la 30.");
+          return false;
+        }
+      }
+
+      if (name === "accept_terms" && !state.acceptTerms) {
+        setFieldError(name, "Ban can dong y dieu khoan truoc khi thanh toan.");
+        return false;
+      }
+
+      return true;
+    };
+
+    const validateFields = function (fieldNames) {
+      let firstInvalid = null;
+
+      fieldNames.forEach(function (fieldName) {
+        if (!validateField(fieldName) && !firstInvalid) {
+          firstInvalid = getField(fieldName);
+        }
+      });
+
+      if (firstInvalid) {
+        firstInvalid.focus();
+      }
+
+      return !firstInvalid;
+    };
+
+    const openLoginPrompt = function () {
+      saveCheckoutDraft();
+      requestLogin(window.location.href);
+    };
+
+    const validateStep = function (stepNumber) {
+      if (stepNumber === 1) {
+        return validateFields(stepOneFields);
+      }
+
+      if (stepNumber === 3) {
+        return validateFields(stepThreeFields);
+      }
+
+      return true;
+    };
+
+    const goToNextStep = function (nextStep) {
+      if (nextStep === 2) {
+        if (!validateStep(1)) {
+          return;
+        }
+
+        requestQuote({
+          force: true,
+          showToast: false,
+          statusText: "Da cap nhat",
+          message: "Tong thanh toan da san sang cho buoc xac nhan."
+        })
+          .catch(function () {
+            return null;
+          })
+          .finally(function () {
+            setStep(2);
+          });
+
+        return;
+      }
+
+      if (nextStep === 3) {
+        if (bookingWizard.getAttribute("data-authenticated") !== "true") {
+          showToast(checkoutMessages.loginRequired || "Ban can dang nhap truoc khi tiep tuc thanh toan.", "warning");
+          openLoginPrompt();
+          return;
+        }
+
+        if (!cachedQuote) {
+          requestQuote({
+            force: true,
+            showToast: false
+          }).catch(function () {});
+        }
+      }
+
+      setStep(nextStep);
+    };
+
+    const buildQuoteSignature = function (state) {
+      return [
+        state.tourId,
+        state.travelDate,
+        state.adultsCount,
+        state.childrenCount,
+        state.couponCode,
+        state.paymentPlan
+      ].join("|");
+    };
+
+    const requestQuote = function (options) {
+      const state = collectState();
+      const settings = options || {};
+      const signature = buildQuoteSignature(state);
+
+      renderReviewState(state);
+
+      if (!state.travelDate) {
+        const fallbackSummary = buildEstimatedSummary(state);
+        renderSummary(fallbackSummary, {
+          statusText: "Cho chon ngay",
+          message: "Chon ngay khoi hanh de backend tinh tong thanh toan chinh xac."
+        });
+        cachedQuote = fallbackSummary;
+        return Promise.resolve(fallbackSummary);
+      }
+
+      if (!canCheckout || !checkoutBackendReady) {
+        const localSummary = buildEstimatedSummary(state);
+        renderSummary(localSummary, {
+          statusText: !canCheckout ? "Can sync backend" : "Backend chua san sang",
+          message: !canCheckout
+            ? "Tour nay chua duoc sync sang backend, nen summary dang o che do uoc tinh."
+            : (checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.")
+        });
+        cachedQuote = localSummary;
+        return Promise.resolve(localSummary);
+      }
+
+      if (!settings.force && cachedQuote && signature === lastQuoteSignature) {
+        renderSummary(cachedQuote, {
+          statusText: settings.statusText || "Da cap nhat",
+          message: settings.message || "Tong tien dang su dung du lieu moi nhat."
+        });
+        return Promise.resolve(cachedQuote);
+      }
+
+      if (quoteController) {
+        quoteController.abort();
+      }
+
+      quoteController = new AbortController();
+      quoteSequence += 1;
+      const requestIndex = quoteSequence;
+      const formData = new FormData();
+
+      formData.append("action", quoteAction);
+      formData.append("nonce", quoteNonce);
+      formData.append("tour_id", state.tourId);
+      formData.append("travel_date", state.travelDate);
+      formData.append("adults_count", String(state.adultsCount));
+      formData.append("children_count", String(state.childrenCount));
+      formData.append("coupon_code", state.couponCode);
+      formData.append("payment_plan", state.paymentPlan);
+
+      setSummaryLoading(true);
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+        signal: quoteController.signal
+      })
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (payload) {
+          if (requestIndex !== quoteSequence) {
+            return null;
+          }
+
+          if (!payload.success) {
+            const error = new Error(normalizeCheckoutMessage(payload.data && payload.data.message, checkoutMessages.genericError || "Khong the tinh gia."));
+            error.code = payload.data && payload.data.code ? payload.data.code : "";
+            throw error;
+          }
+
+          cachedQuote = (payload.data && payload.data.summary) || buildEstimatedSummary(state);
+          lastQuoteSignature = signature;
+          renderSummary(cachedQuote, {
+            statusText: payload.data && payload.data.couponValid === false ? "Coupon chua hop le" : "Da cap nhat",
+            message: (payload.data && payload.data.message) || "Tong thanh toan da duoc cap nhat."
+          });
+
+          if (settings.showToast && payload.data && payload.data.message) {
+            showToast(payload.data.message, payload.data.couponValid === false ? "warning" : "success");
+          }
+
+          return cachedQuote;
+        })
+        .catch(function (error) {
+          if (error && error.name === "AbortError") {
+            return null;
+          }
+
+          if (error && error.code === "backend_route_missing") {
+            markCheckoutBackendUnavailable();
+          }
+
+          const fallbackSummary = buildEstimatedSummary(state);
+          cachedQuote = fallbackSummary;
+          renderSummary(fallbackSummary, {
+            statusText: error && error.code === "backend_route_missing" ? "Backend chua san sang" : "Uoc tinh tam thoi",
+            message: normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Khong the tinh gia luc nay.")
+          });
+
+          if (settings.showToast !== false) {
+            showToast(normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Khong the tinh gia luc nay."), "error");
+          }
+
+          throw error;
+        })
+        .finally(function () {
+          if (requestIndex === quoteSequence) {
+            setSummaryLoading(false);
+          }
+        });
+    };
+
+    const debouncedQuote = debounce(function () {
+      requestQuote({
+        showToast: false,
+        statusText: "Dang cap nhat",
+        message: checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan..."
+      }).catch(function () {});
+    }, 320);
+
+    const setPayButtonState = function (isLoading) {
+      if (!payButton) {
+        return;
+      }
+
+      payButton.disabled = Boolean(isLoading) || !canCheckout;
+      payButton.classList.toggle("is-loading", Boolean(isLoading));
+
+      if (payLabel) {
+        payLabel.textContent = isLoading
+          ? (checkoutMessages.paymentLoading || "Dang chuyen sang cong thanh toan...")
+          : "Thanh toan ngay";
+      }
+
+      if (payLoader) {
+        payLoader.setAttribute("aria-hidden", isLoading ? "false" : "true");
+      }
+    };
+
+    const submitCheckout = function () {
+      if (submitLocked) {
+        return;
+      }
+
+      if (currentStep !== 3) {
+        return;
+      }
+
+      if (!validateStep(1)) {
+        setStep(1);
+        showToast("Vui long hoan tat thong tin khach hang truoc khi thanh toan.", "error");
+        return;
+      }
+
+      if (!validateStep(3)) {
+        setStep(3);
+        showToast("Ban can dong y dieu khoan truoc khi thanh toan.", "error");
+        return;
+      }
+
+      if (!canCheckout || !checkoutBackendReady) {
+        showToast(
+          !canCheckout
+            ? "Tour nay chua duoc sync sang backend checkout."
+            : (checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang."),
+          "error"
+        );
+        return;
+      }
+
+      if (bookingWizard.getAttribute("data-authenticated") !== "true") {
+        showToast(checkoutMessages.loginRequired || "Ban can dang nhap truoc khi thanh toan.", "warning");
+        openLoginPrompt();
+        return;
+      }
+
+      const state = collectState();
+      const retryTransactionCode = bookingWizard.getAttribute("data-last-transaction-code") || "";
+
+      submitLocked = true;
+      setPayButtonState(true);
+
+      requestQuote({
+        force: true,
+        showToast: false,
+        statusText: "Khoa gia cuoi cung",
+        message: "Dang dong bo tong thanh toan cuoi cung truoc khi tao booking."
+      })
+        .catch(function () {
+          return null;
+        })
+        .then(function () {
+          resetCheckoutSessionAttempt();
+          checkoutRequestId = createRequestId();
+          bookingWizard.setAttribute("data-request-id", checkoutRequestId);
+
+          const formData = new FormData();
+          formData.append("action", sessionAction);
+          formData.append("nonce", sessionNonce);
+          formData.append("tour_id", state.tourId);
+          formData.append("request_id", checkoutRequestId);
+          formData.append("travel_date", state.travelDate);
+          formData.append("contact_name", state.contactName);
+          formData.append("contact_phone", state.contactPhone);
+          formData.append("contact_email", state.contactEmail);
+          formData.append("contact_country", state.contactCountry);
+          formData.append("special_requests", state.specialRequests);
+          formData.append("payment_method", state.paymentMethod);
+          formData.append("payment_plan", state.paymentPlan);
+          formData.append("coupon_code", state.couponCode);
+          formData.append("adults_count", String(state.adultsCount));
+          formData.append("children_count", String(state.childrenCount));
+
+          if (retryTransactionCode) {
+            formData.append("retry_transaction_code", retryTransactionCode);
+          }
+
+          return fetch(ajaxUrl, {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin"
+          });
+        })
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (payload) {
+          if (!payload.success) {
+            const errorMessage = normalizeCheckoutMessage((payload.data && payload.data.message) || "", checkoutMessages.genericError || "Khong the tao booking luc nay.");
+            const errorCode = payload.data && payload.data.code ? payload.data.code : "";
+
+            if (errorCode === "login_required") {
+              bookingWizard.setAttribute("data-authenticated", "false");
+              openLoginPrompt();
+            }
+
+            if (errorCode === "backend_route_missing") {
+              markCheckoutBackendUnavailable();
+            }
+
+            throw new Error(errorMessage);
+          }
+
+          const redirectUrl = payload.data && payload.data.redirectUrl ? payload.data.redirectUrl : "";
+
+          if (!redirectUrl) {
+            throw new Error("Khong nhan duoc dia chi redirect thanh toan.");
+          }
+
+          showToast((payload.data && payload.data.message) || "Dang chuyen sang cong thanh toan...", "success");
+          window.setTimeout(function () {
+            window.location.href = redirectUrl;
+          }, 220);
+        })
+        .catch(function (error) {
+          submitLocked = false;
+          setPayButtonState(false);
+          showToast(normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Khong the tao booking luc nay."), "error");
+        });
+    };
+
+    bookingForm.querySelectorAll("input, select, textarea").forEach(function (field) {
+      const eventName = field.tagName === "SELECT" || field.type === "checkbox" ? "change" : "input";
+
+      field.addEventListener(eventName, function () {
+        clearFieldError(field.name);
+        renderReviewState(collectState());
+
+        if (["adults_count", "children_count", "travel_date"].indexOf(field.name) > -1) {
+          renderSummary(cachedQuote || buildEstimatedSummary(collectState()), {
+            statusText: "Dang cap nhat",
+            message: checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan..."
+          });
+          debouncedQuote();
+        }
+      });
+
+      if (field.name === "contact_name" || field.name === "contact_phone" || field.name === "contact_email" || field.name === "contact_country") {
+        field.addEventListener(eventName, function () {
+          renderSummary(cachedQuote || buildEstimatedSummary(collectState()), {
+            statusText: "Da cap nhat",
+            message: "Thong tin lien he da duoc luu tam cho buoc xac nhan."
+          });
+        });
+      }
+    });
+
+    paymentFields.forEach(function (field) {
+      field.addEventListener("change", function () {
+        updatePaymentSelection();
+      });
+    });
+
+    paymentPlanFields.forEach(function (field) {
+      field.addEventListener("change", function () {
+        updatePaymentSelection();
+        renderSummary(cachedQuote || buildEstimatedSummary(collectState()), {
+          statusText: "Dang cap nhat",
+          message: checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan..."
+        });
+        debouncedQuote();
+      });
+    });
+
+    bookingWizard.querySelectorAll("[data-step-next]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const nextStep = parseInt(button.getAttribute("data-step-next") || "1", 10);
+        goToNextStep(nextStep);
+      });
+    });
+
+    bookingWizard.querySelectorAll("[data-step-back]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const previousStep = parseInt(button.getAttribute("data-step-back") || "1", 10);
+        setStep(previousStep);
+      });
+    });
+
+    if (couponButton) {
+      couponButton.addEventListener("click", function () {
+        requestQuote({
+          force: true,
+          showToast: true
+        }).catch(function () {});
+      });
+    }
+
+    if (couponInput) {
+      couponInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          requestQuote({
+            force: true,
+            showToast: true
+          }).catch(function () {});
+        }
+      });
+    }
+
+    if (bookingForm) {
+      bookingForm.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter" || event.defaultPrevented) {
+          return;
+        }
+
+        const target = event.target;
+
+        if (!target || target.tagName === "TEXTAREA" || target === couponInput) {
+          return;
+        }
+
+        if (target.type === "submit" || target.type === "button") {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (currentStep === 1) {
+          goToNextStep(2);
+          return;
+        }
+
+        if (currentStep === 2) {
+          goToNextStep(3);
+        }
+      });
+
+      bookingForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        if (currentStep !== 3) {
+          return;
+        }
+
+        if (event.submitter && payButton && event.submitter !== payButton) {
+          return;
+        }
+
+        submitCheckout();
+      });
+    }
+
+    restoreCheckoutDraft();
+    if (currentStep > 1 && currentStep < 4) {
+      setStep(currentStep);
+    }
+    updatePaymentSelection();
+    renderSummary(buildEstimatedSummary(collectState()), {
+      statusText: canCheckout ? "Dang dong bo" : "Uoc tinh tam thoi",
+      message: canCheckout
+        ? (checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan...")
+        : "Tour nay chua sync sang backend, summary dang hien thi o che do uoc tinh."
+    });
+
+    if (currentStep === 4) {
+      clearCheckoutDraft();
+    }
+
+    if (currentStep !== 4) {
+      requestQuote({
+        force: true,
+        showToast: false
+      }).catch(function () {});
+    } else {
+      setStep(4);
+    }
+
+    if (!canCheckout && payButton) {
+      payButton.disabled = true;
+    }
   }
 
   const checkoutForm = document.querySelector("[data-checkout-form]");
