@@ -16,5 +16,7 @@ router.post('/session', authenticateToken, createCheckoutSession);
 router.get('/gateway/:transactionCode', renderMockGateway);
 router.post('/callback/:transactionCode', handleGatewayCallback);
 router.get('/transaction/:transactionCode', authenticateToken, getCheckoutTransaction);
+router.get('/callback/:transactionCode', handleGatewayCallback);
+
 
 module.exports = router;

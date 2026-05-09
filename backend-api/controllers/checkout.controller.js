@@ -554,14 +554,25 @@ function buildGatewayUrl(req, transactionCode, checkoutToken) {
   return `${req.protocol}://${req.get('host')}/api/checkout/gateway/${encodeURIComponent(transactionCode)}?token=${encodeURIComponent(checkoutToken)}`;
 }
 
-function buildGatewayCallbackUrl(req, transactionCode, checkoutToken, status) {
-  const callbackUrl = new URL(
-    `${req.protocol}://${req.get('host')}/api/checkout/callback/${encodeURIComponent(transactionCode)}`,
-  );
+function buildGatewayCallbackActionUrl(req, transactionCode) {
+  return `${req.protocol}://${req.get('host')}/api/checkout/callback/${encodeURIComponent(transactionCode)}`;
+}
 
-  callbackUrl.searchParams.set('token', checkoutToken);
-  callbackUrl.searchParams.set('status', status);
-  callbackUrl.searchParams.set('signature', signGatewayPayload(transactionCode, status, checkoutToken));
+function buildGatewayCallbackPayload(transactionCode, checkoutToken, status) {
+  return {
+    token: checkoutToken,
+    status,
+    signature: signGatewayPayload(transactionCode, status, checkoutToken),
+  };
+}
+
+function buildGatewayCallbackUrl(req, transactionCode, checkoutToken, status) {
+  const callbackUrl = new URL(buildGatewayCallbackActionUrl(req, transactionCode));
+  const callbackPayload = buildGatewayCallbackPayload(transactionCode, checkoutToken, status);
+
+  callbackUrl.searchParams.set('token', callbackPayload.token);
+  callbackUrl.searchParams.set('status', callbackPayload.status);
+  callbackUrl.searchParams.set('signature', callbackPayload.signature);
 
   return callbackUrl.toString();
 }
@@ -1275,6 +1286,17 @@ exports.renderMockGateway = async (req, res) => {
     }
 
     const method = PAYMENT_METHODS[summary.transaction.provider] || PAYMENT_METHODS.VNPAY;
+    const callbackActionUrl = buildGatewayCallbackActionUrl(req, transactionCode);
+    const successCallbackPayload = buildGatewayCallbackPayload(
+      transactionCode,
+      summary.transaction.checkoutToken,
+      'success',
+    );
+    const failedCallbackPayload = buildGatewayCallbackPayload(
+      transactionCode,
+      summary.transaction.checkoutToken,
+      'failed',
+    );
     const successCallbackUrl = buildGatewayCallbackUrl(
       req,
       transactionCode,
@@ -1395,6 +1417,12 @@ exports.renderMockGateway = async (req, res) => {
       gap: 14px;
       margin-top: 26px;
     }
+    .gateway-form {
+      margin: 0;
+    }
+    .gateway-form button {
+      width: 100%;
+    }
     button,
     .action-link {
       appearance: none;
@@ -1464,10 +1492,21 @@ exports.renderMockGateway = async (req, res) => {
       </div>
 
       <div class="actions">
-        <a class="action-link btn-success" href="${successCallbackUrl}">Thanh toan thanh cong</a>
-        <a class="action-link btn-fail" href="${failedCallbackUrl}">Mo phong that bai</a>
+        <form class="gateway-form" method="post" action="${callbackActionUrl}">
+          <input type="hidden" name="token" value="${successCallbackPayload.token}" />
+          <input type="hidden" name="status" value="${successCallbackPayload.status}" />
+          <input type="hidden" name="signature" value="${successCallbackPayload.signature}" />
+          <button type="submit" class="btn-success">Thanh toan thanh cong</button>
+        </form>
+        <form class="gateway-form" method="post" action="${callbackActionUrl}">
+          <input type="hidden" name="token" value="${failedCallbackPayload.token}" />
+          <input type="hidden" name="status" value="${failedCallbackPayload.status}" />
+          <input type="hidden" name="signature" value="${failedCallbackPayload.signature}" />
+          <button type="submit" class="btn-fail">Mo phong that bai</button>
+        </form>
       </div>
       <p class="note">Trong luc tich hop production, khu vuc nay se duoc thay bang redirect sang VNPay, MoMo, ZaloPay, chuyen khoan hoac cong the quoc te co credentials that.</p>
+      <p class="note">Neu trinh duyet chan submit form, ban van co the dung callback thu cong: <a href="${successCallbackUrl}">Success URL</a> hoac <a href="${failedCallbackUrl}">Failed URL</a>.</p>
     </section>
     <aside class="card">
       <h2 style="margin-top:0;">Tong quan giao dich</h2>

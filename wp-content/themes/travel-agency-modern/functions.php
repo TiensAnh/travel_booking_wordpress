@@ -26,6 +26,8 @@ function tam_asset_version( $relative_path ) {
 	return TAM_THEME_VERSION;
 }
 
+require_once get_theme_file_path( '/inc/admin-backoffice.php' );
+
 /**
  * Child theme setup.
  */
