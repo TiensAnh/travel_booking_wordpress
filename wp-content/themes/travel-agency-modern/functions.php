@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Travel Agency Modern child theme functions.
  */
@@ -1008,6 +1008,10 @@ function tam_get_page_url_by_path( $path, $fallback = '/' ) {
 		return get_permalink( $page );
 	}
 
+	if ( wp_http_validate_url( $fallback ) ) {
+		return $fallback;
+	}
+
 	return home_url( $fallback );
 }
 
@@ -1453,105 +1457,44 @@ function tam_get_tour_gallery_images( $post_id ) {
 		);
 	};
 
-	if ( $post_id && function_exists( 'tam_backend_api_get_tour_image_for_post' ) ) {
-		$backend_image = tam_backend_api_get_tour_image_for_post( $post_id );
+	if ( $post_id && function_exists( 'tam_backend_api_get_tour_gallery_for_post' ) ) {
+		$backend_gallery = tam_backend_api_get_tour_gallery_for_post( $post_id );
 
-		if ( $backend_image ) {
-			$append_image( $backend_image, get_the_title( $post_id ) );
-			return array_slice( $gallery, 0, 1 );
+		foreach ( is_array( $backend_gallery ) ? $backend_gallery : array() as $image_url ) {
+			$append_image( $image_url, get_the_title( $post_id ) );
 		}
 	}
 
-	if ( $post_id && has_post_thumbnail( $post_id ) ) {
+	if ( $post_id && empty( $gallery ) && function_exists( 'tam_backend_api_get_tour_image_for_post' ) ) {
+		$append_image( tam_backend_api_get_tour_image_for_post( $post_id ), get_the_title( $post_id ) );
+	}
+
+	if ( $post_id && empty( $gallery ) && has_post_thumbnail( $post_id ) ) {
 		$append_image(
 			get_the_post_thumbnail_url( $post_id, 'tam-hero-large' ),
 			get_the_title( $post_id )
 		);
 	}
 
-	if ( empty( $gallery ) ) {
+	if ( $post_id && empty( $gallery ) ) {
 		$attachment_ids = get_posts(
 			array(
 				'post_type'      => 'attachment',
 				'post_parent'    => $post_id,
 				'post_mime_type' => 'image',
-				'posts_per_page' => 1,
+				'posts_per_page' => 4,
 				'fields'         => 'ids',
 				'orderby'        => 'menu_order ID',
 				'order'          => 'ASC',
 			)
 		);
 
-		if ( ! empty( $attachment_ids[0] ) ) {
+		foreach ( $attachment_ids as $attachment_id ) {
 			$append_image(
-				wp_get_attachment_image_url( $attachment_ids[0], 'tam-hero-large' ),
-				get_post_meta( $attachment_ids[0], '_wp_attachment_image_alt', true )
+				wp_get_attachment_image_url( $attachment_id, 'tam-hero-large' ),
+				get_post_meta( $attachment_id, '_wp_attachment_image_alt', true )
 			);
 		}
-	}
-
-	if ( empty( $gallery ) ) {
-		$append_image( tam_get_tour_fallback_image_url( $post_id ), get_the_title( $post_id ) );
-	}
-
-	return array_slice( $gallery, 0, 1 );
-
-	$gallery = array();
-	$seen    = array();
-
-	$append_image = static function ( $url, $alt = '' ) use ( &$gallery, &$seen ) {
-		$url = trim( (string) $url );
-
-		if ( '' === $url || isset( $seen[ $url ] ) ) {
-			return;
-		}
-
-		$seen[ $url ] = true;
-		$gallery[]    = array(
-			'url' => $url,
-
-	$append_image = static function ( $url, $alt = '' ) use ( &$gallery, &$seen ) {
-		$url = trim( (string) $url );
-
-		if ( '' === $url || isset( $seen[ $url ] ) ) {
-			return;
-		}
-
-		$seen[ $url ] = true;
-		$gallery[]    = array(
-			'url' => $url,
-			'alt' => $alt ? $alt : get_bloginfo( 'name' ),
-		);
-	};
-
-	if ( $post_id && function_exists( 'tam_backend_api_get_tour_gallery_for_post' ) ) {
-		$backend_gallery = tam_backend_api_get_tour_gallery_for_post( $post_id );
-
-		if ( ! empty( $backend_gallery ) ) {
-			foreach ( $backend_gallery as $image_url ) {
-				$append_image( $image_url, get_the_title( $post_id ) );
-			}
-
-			return array_slice( $gallery, 0, 4 );
-		}
-	}
-
-	if ( $post_id && has_post_thumbnail( $post_id ) ) {
-		$append_image(
-
-	foreach ( $attachment_ids as $attachment_id ) {
-		$append_image(
-			wp_get_attachment_image_url( $attachment_id, 'tam-hero-large' ),
-			get_post_meta( $attachment_id, '_wp_attachment_image_alt', true )
-		);
-	}
-
-	$library          = tam_get_tour_detail_image_library();
-	$theme            = tam_get_tour_visual_theme( $post_id );
-	$fallback_gallery = isset( $library[ $theme ] ) ? $library[ $theme ] : $library['default'];
-
-	foreach ( $fallback_gallery as $image ) {
-		$append_image( $image['url'], $image['alt'] );
 	}
 
 	if ( empty( $gallery ) ) {
@@ -1588,29 +1531,6 @@ function tam_get_tour_departure_options( $tour_meta ) {
 		);
 	}
 
-	if ( ! empty( $options ) ) {
-		return $options;
-	}
-
-	$first_departure = strtotime( 'next saturday', current_time( 'timestamp' ) );
-
-	if ( ! $first_departure ) {
-		$first_departure = current_time( 'timestamp' );
-	}
-
-	for ( $index = 0; $index < 4; $index++ ) {
-		$timestamp = strtotime( '+' . ( $index * 7 ) . ' days', $first_departure );
-
-		$options[] = array(
-			'value' => wp_date( 'Y-m-d', $timestamp ),
-			'label' => sprintf(
-				/* translators: %s: departure date */
-				__( 'Khởi hành %s', 'travel-agency-modern' ),
-				wp_date( 'd/m/Y', $timestamp )
-			),
-		);
-	}
-
 	return $options;
 }
 
@@ -1638,56 +1558,21 @@ function tam_get_tour_highlights( $post_id, $tour_meta, $terms = array() ) {
 function tam_get_tour_itinerary( $post_id, $tour_meta, $terms = array() ) {
 	$structured_rows = tam_parse_structured_rows( isset( $tour_meta['itinerary'] ) ? $tour_meta['itinerary'] : '', 3 );
 
-	if ( ! empty( $structured_rows ) ) {
-		return array_map(
-			static function ( $row ) {
-				return array(
-					'label'       => $row[0] ? $row[0] : __( 'Day', 'travel-agency-modern' ),
-					'title'       => $row[1] ? $row[1] : __( 'Hoạt động trong ngày', 'travel-agency-modern' ),
-					'description' => $row[2],
-				);
-			},
-			$structured_rows
-		);
+	if ( empty( $structured_rows ) ) {
+		return array();
 	}
 
-	$destination_name = ! empty( $terms ) ? $terms[0]->name : __( 'điểm đến', 'travel-agency-modern' );
-	$transport        = ! empty( $tour_meta['transport'] ) ? $tour_meta['transport'] : __( 'xe du lịch', 'travel-agency-modern' );
-	$days             = 3;
-
-	if ( ! empty( $tour_meta['duration'] ) && preg_match( '/(\d+)/', $tour_meta['duration'], $matches ) ) {
-		$days = max( 2, min( 6, (int) $matches[1] ) );
-	}
-
-	$items = array();
-
-	for ( $day = 1; $day <= $days; $day++ ) {
-		if ( 1 === $day ) {
-			$items[] = array(
-				'label'       => 'Day 1',
-				'title'       => sprintf( __( 'Khởi hành và chạm nhịp %s', 'travel-agency-modern' ), $destination_name ),
-				'description' => sprintf( __( 'Đón khách, di chuyển bằng %1$s, check-in nơi lưu trú và bắt đầu những trải nghiệm đầu tiên trong ngày để cả đoàn làm quen nhịp điệu chuyến đi.', 'travel-agency-modern' ), $transport ),
+	return array_map(
+		static function ( $row, $index ) {
+			return array(
+				'label'       => $row[0] ? $row[0] : 'Day ' . ( $index + 1 ),
+				'title'       => $row[1] ? $row[1] : 'Itinerary ' . ( $index + 1 ),
+				'description' => $row[2],
 			);
-			continue;
-		}
-
-		if ( $day === $days ) {
-			$items[] = array(
-				'label'       => 'Day ' . $day,
-				'title'       => __( 'Thư giãn, mua quà và trở về', 'travel-agency-modern' ),
-				'description' => __( 'Buổi sáng tự do chụp ảnh, mua đặc sản hoặc nghỉ ngơi. Sau đó đoàn làm thủ tục trả phòng và quay về điểm đón ban đầu.', 'travel-agency-modern' ),
-			);
-			continue;
-		}
-
-		$items[] = array(
-			'label'       => 'Day ' . $day,
-			'title'       => __( 'Khám phá điểm nhấn trong hành trình', 'travel-agency-modern' ),
-			'description' => __( 'Dành trọn ngày để tham quan cảnh đẹp, thưởng thức ẩm thực địa phương, check-in các điểm nổi bật và giữ lại khoảng nghỉ vừa đủ để lịch trình luôn thoải mái.', 'travel-agency-modern' ),
-		);
-	}
-
-	return $items;
+		},
+		$structured_rows,
+		array_keys( $structured_rows )
+	);
 }
 
 /**

@@ -1142,7 +1142,7 @@ function tam_backend_admin_build_tour_payload( $input ) {
 		'highlights'        => $sanitize_rows( $highlight_rows, array( 'title', 'description', 'icon' ) ),
 		'itinerary'         => $sanitize_rows( $itinerary_rows, array( 'label', 'title', 'description' ) ),
 		'imageUrl'          => ! empty( $gallery_images[0] ) ? $gallery_images[0] : '',
-		'galleryImages'     => ! empty( $gallery_images[0] ) ? array( $gallery_images[0] ) : array(),
+		'galleryImages'     => $gallery_images,
 	);
 
 	$input = is_array( $input ) ? $input : array();
@@ -2655,7 +2655,6 @@ function tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id = 0
 	echo '</div>';
 	echo '</div>';
 	echo '</section>';
-	return;
 
 	$form          = wp_parse_args( is_array( $form ) ? $form : array(), tam_backend_admin_default_tour_form() );
 	$errors        = is_array( $errors ) ? $errors : array();

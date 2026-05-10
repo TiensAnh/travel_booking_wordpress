@@ -49,7 +49,12 @@ const uploadTourImage = multer({
     fileSize: 5 * 1024 * 1024,
   },
   fileFilter,
-}).single('image');
+}).fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'galleryImages', maxCount: 8 },
+  { name: 'gallery_images', maxCount: 8 },
+  { name: 'gallery', maxCount: 8 },
+]);
 
 module.exports = {
   uploadTourImage,

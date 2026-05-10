@@ -26,29 +26,16 @@ while ( have_posts() ) :
 		: '';
 	$intro_text = $api_description !== ''
 		? $api_description
-		: ( has_excerpt() ? get_the_excerpt() : wp_trim_words( wp_strip_all_tags( get_post_field( 'post_content', get_the_ID() ) ), 36 ) );
+		: ( has_excerpt() ? get_the_excerpt() : wp_strip_all_tags( get_post_field( 'post_content', get_the_ID() ) ) );
 	// Rating lay tu backend API (average_rating, total_reviews) — khong hardcode.
 	$api_tour_id       = function_exists( 'tam_backend_api_get_tour_id_for_post' ) ? tam_backend_api_get_tour_id_for_post( get_the_ID() ) : 0;
 	$api_average_rating = $api_tour_id > 0 ? (float) get_post_meta( get_the_ID(), '_tam_api_average_rating', true ) : 0;
 	$api_total_reviews  = $api_tour_id > 0 ? (int) get_post_meta( get_the_ID(), '_tam_api_total_reviews', true ) : 0;
-	// Fallback sang WP meta neu chua sync
-	if ( 0.0 === $api_average_rating && ! empty( $tour_meta['rating'] ) ) {
-		$api_average_rating = (float) str_replace( ',', '.', $tour_meta['rating'] );
-	}
-	if ( 0 === $api_total_reviews && ! empty( $tour_meta['review_count'] ) ) {
-		$api_total_reviews = absint( preg_replace( '/\D+/', '', (string) $tour_meta['review_count'] ) );
-	}
-	// Su dung review thuc te neu co
-	if ( 0 === $api_total_reviews && ! empty( $reviews ) ) {
-		$api_total_reviews = count( $reviews );
-	}
-	if ( 0.0 === $api_average_rating && ! empty( $reviews ) ) {
-		$sum = array_sum( array_column( $reviews, 'rating' ) );
-		$api_average_rating = count( $reviews ) > 0 ? round( $sum / count( $reviews ), 1 ) : 0;
-	}
 	$rating_value   = $api_average_rating > 0 ? max( 1, min( 5, $api_average_rating ) ) : 0;
 	$rating_display = $rating_value > 0 ? number_format_i18n( $rating_value, 1 ) : '';
-	$review_count   = $api_total_reviews;
+	$review_count   = $rating_value > 0 ? $api_total_reviews : 0;
+	$has_reviews     = $rating_value > 0 && $review_count > 0;
+	$has_departure_options = ! empty( $departure_options );
 	$price_numeric     = (int) preg_replace( '/[^\d]/', '', (string) $tour_meta['price_from'] );
 	$price_display     = tam_format_tour_price( $tour_meta['price_from'] );
 	$duration_label    = ! empty( $tour_meta['duration'] ) ? $tour_meta['duration'] : __( 'Đang cập nhật', 'travel-agency-modern' );
@@ -112,6 +99,16 @@ while ( have_posts() ) :
 								</div>
 							</div>
 
+							<?php if ( count( $gallery_images ) > 1 ) : ?>
+								<div class="tam-tour-detail__thumbs" aria-label="Tour gallery">
+									<?php foreach ( $gallery_images as $index => $image ) : ?>
+										<button class="tam-tour-detail__thumb <?php echo 0 === $index ? 'is-active' : ''; ?>" type="button" data-tour-gallery-thumb data-image-url="<?php echo esc_url( $image['url'] ); ?>" data-image-alt="<?php echo esc_attr( $image['alt'] ); ?>">
+											<img src="<?php echo esc_url( $image['url'] ); ?>" alt="<?php echo esc_attr( $image['alt'] ); ?>" />
+										</button>
+									<?php endforeach; ?>
+								</div>
+							<?php endif; ?>
+
 						</section>
 
 						<section class="tam-tour-detail__section tam-tour-detail__info tam-content-card">
@@ -125,13 +122,17 @@ while ( have_posts() ) :
 							</div>
 
 							<div class="tam-tour-detail__rating-row">
-								<div class="tam-tour-detail__stars" aria-label="<?php echo esc_attr( sprintf( __( 'Đánh giá %s trên 5', 'travel-agency-modern' ), $rating_display ) ); ?>">
-									<?php for ( $star = 1; $star <= 5; $star++ ) : ?>
-										<span class="<?php echo $star <= (int) round( $rating_value ) ? 'is-filled' : ''; ?>">★</span>
-									<?php endfor; ?>
-								</div>
-								<strong><?php echo esc_html( $rating_display ); ?></strong>
-								<span><?php echo esc_html( sprintf( _n( '%d đánh giá', '%d đánh giá', $review_count, 'travel-agency-modern' ), $review_count ) ); ?></span>
+								<?php if ( $has_reviews ) : ?>
+									<div class="tam-tour-detail__stars" aria-label="<?php echo esc_attr( sprintf( __( 'Danh gia %s tren 5', 'travel-agency-modern' ), $rating_display ) ); ?>">
+										<?php for ( $star = 1; $star <= 5; $star++ ) : ?>
+											<span class="<?php echo $star <= (int) round( $rating_value ) ? 'is-filled' : ''; ?>">*</span>
+										<?php endfor; ?>
+									</div>
+									<strong><?php echo esc_html( $has_reviews ? $rating_display : __( 'Chua co danh gia', 'travel-agency-modern' ) ); ?></strong>
+									<span><?php echo esc_html( sprintf( _n( '%d danh gia', '%d danh gia', $review_count, 'travel-agency-modern' ), $review_count ) ); ?></span>
+								<?php else : ?>
+									<span class="tam-empty-state--text"><?php esc_html_e( 'Chua co danh gia', 'travel-agency-modern' ); ?></span>
+								<?php endif; ?>
 							</div>
 
 							<?php if ( $intro_text ) : ?>
@@ -277,6 +278,12 @@ while ( have_posts() ) :
 								</div>
 
 								<div class="tam-tour-detail__review-grid">
+									<?php if ( empty( $reviews ) ) : ?>
+										<div class="tam-empty-state tam-empty-state--inline">
+											<strong><?php esc_html_e( 'Chua co danh gia nao.', 'travel-agency-modern' ); ?></strong>
+											<p><?php esc_html_e( 'Khi backend co review that cho tour nay, danh sach se hien thi tai day.', 'travel-agency-modern' ); ?></p>
+										</div>
+									<?php else : ?>
 									<?php foreach ( $reviews as $review ) : ?>
 										<article class="tam-tour-detail__review-card">
 											<div class="tam-tour-detail__review-top">
@@ -293,6 +300,7 @@ while ( have_posts() ) :
 											<p class="tam-tour-detail__review-copy"><?php echo esc_html( $review['comment'] ); ?></p>
 										</article>
 									<?php endforeach; ?>
+									<?php endif; ?>
 								</div>
 							</div>
 
@@ -397,10 +405,14 @@ while ( have_posts() ) :
 							<form class="tam-tour-detail__booking-form" data-tour-booking-box data-tour-title="<?php echo esc_attr( get_the_title() ); ?>" data-tour-id="<?php echo esc_attr( get_the_ID() ); ?>" data-checkout-url="<?php echo esc_url( tam_get_page_url_by_path( 'thanh-toan', '/thanh-toan/' ) ); ?>" data-base-price="<?php echo esc_attr( $price_numeric ); ?>" data-authenticated="<?php echo ! empty( $api_user ) ? 'true' : 'false'; ?>">
 								<label class="tam-tour-detail__field">
 									<span><?php esc_html_e( 'Chọn ngày khởi hành', 'travel-agency-modern' ); ?></span>
-									<select name="departure_date" data-booking-date>
-										<?php foreach ( $departure_options as $option ) : ?>
-											<option value="<?php echo esc_attr( $option['value'] ); ?>"><?php echo esc_html( $option['label'] ); ?></option>
-										<?php endforeach; ?>
+									<select name="departure_date" data-booking-date <?php disabled( ! $has_departure_options ); ?>>
+										<?php if ( $has_departure_options ) : ?>
+											<?php foreach ( $departure_options as $option ) : ?>
+												<option value="<?php echo esc_attr( $option['value'] ); ?>"><?php echo esc_html( $option['label'] ); ?></option>
+											<?php endforeach; ?>
+										<?php else : ?>
+											<option value=""><?php esc_html_e( 'Chua co ngay khoi hanh', 'travel-agency-modern' ); ?></option>
+										<?php endif; ?>
 									</select>
 								</label>
 
@@ -430,7 +442,7 @@ while ( have_posts() ) :
 									<small><?php esc_html_e( 'Giá cuối cùng có thể thay đổi theo ngày khởi hành, loại phòng và số lượng khách thực tế.', 'travel-agency-modern' ); ?></small>
 								</div>
 
-								<button type="button" class="tam-button tam-button--accent tam-tour-detail__booking-button" data-booking-submit>
+								<button type="button" class="tam-button tam-button--accent tam-tour-detail__booking-button" data-booking-submit <?php disabled( ! $has_departure_options ); ?>>
 									<?php esc_html_e( 'Đặt ngay', 'travel-agency-modern' ); ?>
 								</button>
 

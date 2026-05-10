@@ -583,6 +583,13 @@ document.addEventListener("DOMContentLoaded", function () {
         syncBookingState();
 
         if (checkoutUrl && tourId) {
+          if (!bookingDateField || !bookingDateField.value) {
+            if (bookingSummary) {
+              bookingSummary.textContent = "Tour nay chua co ngay khoi hanh de dat.";
+            }
+            return;
+          }
+
           const people = Math.max(parseInt((bookingPeopleField && bookingPeopleField.value) || "1", 10) || 1, 1);
           const nextUrl = new URL(checkoutUrl, window.location.origin);
 

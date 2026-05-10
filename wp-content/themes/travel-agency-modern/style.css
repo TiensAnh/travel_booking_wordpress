@@ -8075,3 +8075,29 @@ body.travel-agency-modern .tam-page-hero__content .tam-section-subtitle {
 body.travel-agency-modern .tam-home-hero__title span {
   color: #ffe2a1;
 }
+
+/* Account page cards should flow normally; generic summary cards are sticky for tour sidebars. */
+body.travel-agency-modern .tam-account-page .tam-account-hero,
+body.travel-agency-modern .tam-account-page .tam-account-stat {
+  position: static;
+  top: auto;
+  z-index: auto;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-shell,
+body.travel-agency-modern .tam-account-page .tam-account-stats,
+body.travel-agency-modern .tam-account-page .tam-account-layout {
+  align-items: start;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-detail {
+  position: sticky;
+  top: 104px;
+}
+
+@media (max-width: 980px) {
+  body.travel-agency-modern .tam-account-page .tam-account-detail {
+    position: static;
+    top: auto;
+  }
+}

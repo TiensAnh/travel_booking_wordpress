@@ -2747,7 +2747,7 @@ function tam_backend_api_format_itinerary( $items ) {
 		return '';
 	}
 
-	foreach ( $items as $item ) {
+	foreach ( $items as $index => $item ) {
 		if ( ! is_array( $item ) ) {
 			continue;
 		}
@@ -2763,8 +2763,8 @@ function tam_backend_api_format_itinerary( $items ) {
 		$rows[] = implode(
 			'|',
 			array(
-				$label ? $label : 'Day',
-				$title ? $title : 'Itinerary',
+				$label ? $label : 'Day ' . ( $index + 1 ),
+				$title ? $title : 'Itinerary ' . ( $index + 1 ),
 				$description,
 			)
 		);
@@ -2780,7 +2780,6 @@ function tam_backend_api_format_itinerary( $items ) {
  * @return string
  */
 function tam_backend_api_build_tour_content( $tour ) {
-	return '';
 
 	$parts = array();
 
@@ -2897,8 +2896,30 @@ function tam_backend_api_upsert_tour_post( $tour ) {
 		$primary_image = (string) reset( $tour['galleryImages'] );
 	}
 
+	$gallery_images = array();
+
+	if ( '' !== $primary_image ) {
+		$gallery_images[] = $primary_image;
+	}
+
+	if ( ! empty( $tour['galleryImages'] ) && is_array( $tour['galleryImages'] ) ) {
+		foreach ( $tour['galleryImages'] as $gallery_image ) {
+			$gallery_image = trim( (string) $gallery_image );
+
+			if ( '' !== $gallery_image ) {
+				$gallery_images[] = $gallery_image;
+			}
+		}
+	}
+
+	$gallery_images = array_values( array_unique( array_filter( $gallery_images ) ) );
+
+	if ( '' === $primary_image && ! empty( $gallery_images ) ) {
+		$primary_image = (string) reset( $gallery_images );
+	}
+
 	update_post_meta( $post_id, '_tam_api_image_url', $primary_image );
-	update_post_meta( $post_id, '_tam_api_gallery_images', $primary_image ? array( $primary_image ) : array() );
+	update_post_meta( $post_id, '_tam_api_gallery_images', $gallery_images );
 	update_post_meta( $post_id, '_tam_tour_duration', isset( $tour['durationText'] ) ? (string) $tour['durationText'] : '' );
 	update_post_meta( $post_id, '_tam_tour_departure', $departure );
 	update_post_meta( $post_id, '_tam_tour_price_from', isset( $tour['price'] ) ? (string) absint( $tour['price'] ) : '' );

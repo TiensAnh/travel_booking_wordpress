@@ -83,23 +83,44 @@ function normalizeBoolean(value) {
   return ['1', 'true', 'yes', 'on', 'active', 'featured'].includes(normalized);
 }
 
-function normalizeGallerySlots(value, fallbackImage = '') {
-  const primary = normalizeText(
-    Array.isArray(value) ? value[0] : (value || fallbackImage),
-  );
+function normalizeGalleryImages(value, fallbackImage = '') {
+  const images = [];
+  const appendImage = (item) => {
+    const image = normalizeText(item);
 
-  if (primary) {
-    return [primary];
+    if (image && !images.includes(image)) {
+      images.push(image);
+    }
+  };
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      if (typeof item === 'string') {
+        appendImage(item);
+        return;
+      }
+
+      if (item && typeof item === 'object') {
+        appendImage(item.url || item.imageUrl || item.image_url || item.path || '');
+      }
+    });
+  } else if (typeof value === 'string') {
+    const trimmed = value.trim();
+
+    if (trimmed.startsWith('[')) {
+      try {
+        normalizeGalleryImages(JSON.parse(trimmed)).forEach(appendImage);
+      } catch (error) {
+        trimmed.split(/\r?\n/).forEach(appendImage);
+      }
+    } else {
+      trimmed.split(/\r?\n/).forEach(appendImage);
+    }
   }
 
-  const fallback = normalizeText(fallbackImage);
-  return fallback ? [fallback] : [];
-}
+  appendImage(fallbackImage);
 
-function normalizeGalleryImages(value, fallbackImage = '') {
-  const slots = normalizeGallerySlots(value, fallbackImage);
-  const primary = normalizeText(Array.isArray(slots) && slots[0] ? slots[0] : '');
-  return primary ? [primary] : [];
+  return images;
 }
 
 function normalizeDepartureDates(value) {
@@ -263,9 +284,15 @@ function safelyParseJsonArray(value, fallback = []) {
 function getUploadedTourFiles(req) {
   const fileGroups = req && req.files && typeof req.files === 'object' ? req.files : {};
   const groupedImage = Array.isArray(fileGroups.image) && fileGroups.image[0] ? fileGroups.image[0] : null;
+  const galleryFiles = [
+    ...(Array.isArray(fileGroups.galleryImages) ? fileGroups.galleryImages : []),
+    ...(Array.isArray(fileGroups.gallery_images) ? fileGroups.gallery_images : []),
+    ...(Array.isArray(fileGroups.gallery) ? fileGroups.gallery : []),
+  ];
 
   return {
     image: req && req.file ? req.file : groupedImage,
+    gallery: galleryFiles,
   };
 }
 
@@ -340,7 +367,7 @@ function serializeTour(row) {
     maxPeople: row.max_people === null || row.max_people === undefined ? null : Number(row.max_people),
     status: normalizeStatus(row.status),
     imageUrl,
-    galleryImages: imageUrl ? [imageUrl] : [],
+    galleryImages,
     transport: row.transport || '',
     departureNote: row.departure_note || '',
     tagline: row.tagline || '',
@@ -395,14 +422,21 @@ function getRequestPayload(req) {
   }
 
   const uploadedFiles = getUploadedTourFiles(req);
-  const galleryImages = normalizeGalleryImages(
+  const submittedGallery = normalizeGalleryImages(
     requestBody.galleryImages ?? requestBody.gallery_images,
     requestBody.imageUrl || requestBody.image_url,
   );
   const uploadedImage = uploadedFiles.image ? buildUploadedAssetPath(uploadedFiles.image) : '';
+  const uploadedGallery = Array.isArray(uploadedFiles.gallery)
+    ? uploadedFiles.gallery.map(buildUploadedAssetPath).filter(Boolean)
+    : [];
 
-  requestBody.imageUrl = uploadedImage || normalizeText(requestBody.imageUrl || requestBody.image_url || galleryImages[0] || '');
-  requestBody.galleryImages = requestBody.imageUrl ? [requestBody.imageUrl] : [];
+  requestBody.imageUrl = uploadedImage || normalizeText(requestBody.imageUrl || requestBody.image_url || submittedGallery[0] || uploadedGallery[0] || '');
+  requestBody.galleryImages = normalizeGalleryImages([
+    requestBody.imageUrl,
+    ...submittedGallery,
+    ...uploadedGallery,
+  ]);
 
   return {
     body: requestBody,
@@ -496,7 +530,7 @@ function buildWritePayload(body = {}, adminId = null) {
       maxPeople,
       status,
       imageUrl: imageUrl || null,
-      galleryImages: imageUrl ? [imageUrl] : [],
+      galleryImages,
       transport: transport || null,
       departureNote: departureNote || null,
       tagline: tagline || null,

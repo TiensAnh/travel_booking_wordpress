@@ -6,7 +6,7 @@
 $api_user     = function_exists( 'tam_backend_api_get_auth_user' ) ? tam_backend_api_get_auth_user() : null;
 $has_api_user = ! empty( $api_user );
 $is_signed_in = is_user_logged_in() || $has_api_user;
-$account_url  = $has_api_user && function_exists( 'tam_backend_api_get_account_url' ) ? tam_backend_api_get_account_url() : admin_url( 'profile.php' );
+$account_url  = function_exists( 'tam_backend_api_get_account_url' ) ? tam_backend_api_get_account_url() : home_url( '/tai-khoan/' );
 $logout_url   = $has_api_user && function_exists( 'tam_backend_api_get_logout_url' )
 	? tam_backend_api_get_logout_url( function_exists( 'tam_get_current_public_url' ) ? tam_get_current_public_url() : home_url( '/' ) )
 	: wp_logout_url( home_url( '/' ) );
