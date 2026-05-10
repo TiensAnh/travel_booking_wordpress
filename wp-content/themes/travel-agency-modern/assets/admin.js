@@ -74,6 +74,159 @@
     pendingForm = null;
   }
 
+  function setupTourImagePreview() {
+    const singleImageCard = document.querySelector("[data-tam-tour-image]");
+
+    if (singleImageCard) {
+      const input = singleImageCard.querySelector("[data-tam-tour-image-input]");
+      const preview = singleImageCard.querySelector("[data-tam-tour-image-preview]");
+      const placeholder = singleImageCard.querySelector("[data-tam-tour-image-placeholder]");
+      const frame = singleImageCard.querySelector("[data-tam-tour-image-frame]");
+
+      if (!(input instanceof HTMLInputElement) || !preview || !placeholder) {
+        return;
+      }
+
+      const existingSrc = preview.getAttribute("data-existing-src") || "";
+      let objectUrl = "";
+
+      function cleanupObjectUrl() {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = "";
+        }
+      }
+
+      function showImage(src) {
+        preview.setAttribute("src", src);
+        preview.hidden = false;
+        placeholder.hidden = true;
+
+        if (frame) {
+          frame.classList.add("has-image");
+        }
+      }
+
+      function showPlaceholder() {
+        preview.hidden = true;
+        placeholder.hidden = false;
+
+        if (frame) {
+          frame.classList.remove("has-image");
+        }
+      }
+
+      function restoreOriginal() {
+        cleanupObjectUrl();
+
+        if (existingSrc) {
+          showImage(existingSrc);
+          return;
+        }
+
+        preview.removeAttribute("src");
+        showPlaceholder();
+      }
+
+      input.addEventListener("change", () => {
+        cleanupObjectUrl();
+
+        const file = input.files && input.files[0];
+
+        if (!file) {
+          restoreOriginal();
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(file);
+        showImage(objectUrl);
+      });
+
+      window.addEventListener("beforeunload", cleanupObjectUrl, { once: true });
+      return;
+    }
+
+    const slots = Array.from(document.querySelectorAll("[data-tam-tour-slot]"));
+
+    if (!slots.length) {
+      return;
+    }
+
+    const cleanupCallbacks = [];
+
+    slots.forEach((slot) => {
+      const input = slot.querySelector("[data-tam-tour-slot-input]");
+      const preview = slot.querySelector("[data-tam-tour-slot-preview]");
+      const placeholder = slot.querySelector("[data-tam-tour-slot-placeholder]");
+      const frame = slot.querySelector("[data-tam-tour-slot-frame]");
+
+      if (!(input instanceof HTMLInputElement) || !preview || !placeholder) {
+        return;
+      }
+
+      const existingSrc = preview.getAttribute("data-existing-src") || "";
+      let objectUrl = "";
+
+      function cleanupObjectUrl() {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = "";
+        }
+      }
+
+      function showImage(src) {
+        preview.setAttribute("src", src);
+        preview.hidden = false;
+        placeholder.hidden = true;
+
+        if (frame) {
+          frame.classList.add("has-image");
+        }
+      }
+
+      function showPlaceholder() {
+        preview.hidden = true;
+        placeholder.hidden = false;
+
+        if (frame) {
+          frame.classList.remove("has-image");
+        }
+      }
+
+      function restoreOriginal() {
+        cleanupObjectUrl();
+
+        if (existingSrc) {
+          showImage(existingSrc);
+          return;
+        }
+
+        preview.removeAttribute("src");
+        showPlaceholder();
+      }
+
+      input.addEventListener("change", () => {
+        cleanupObjectUrl();
+
+        const file = input.files && input.files[0];
+
+        if (!file) {
+          restoreOriginal();
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(file);
+        showImage(objectUrl);
+      });
+
+      cleanupCallbacks.push(cleanupObjectUrl);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      cleanupCallbacks.forEach((cleanup) => cleanup());
+    });
+  }
+
   document.addEventListener("submit", (event) => {
     const form = event.target;
 
@@ -94,4 +247,10 @@
     pendingForm = form;
     openModal(message);
   });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupTourImagePreview, { once: true });
+  } else {
+    setupTourImagePreview();
+  }
 })();

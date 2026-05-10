@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Travel Agency Modern child theme functions.
  */
@@ -1113,6 +1113,14 @@ function tam_get_tour_fallback_image_url( $post_id ) {
  * @param string $size    Image size name.
  */
 function tam_get_tour_image_url( $post_id, $size = 'tam-tour-card' ) {
+	if ( $post_id && function_exists( 'tam_backend_api_get_tour_id_for_post' ) && tam_backend_api_get_tour_id_for_post( $post_id ) > 0 && function_exists( 'tam_backend_api_get_tour_image_for_post' ) ) {
+		$api_image_url = tam_backend_api_get_tour_image_for_post( $post_id );
+
+		if ( $api_image_url ) {
+			return $api_image_url;
+		}
+	}
+
 	if ( $post_id && has_post_thumbnail( $post_id ) ) {
 		$image_url = get_the_post_thumbnail_url( $post_id, $size );
 
@@ -1445,6 +1453,15 @@ function tam_get_tour_gallery_images( $post_id ) {
 		);
 	};
 
+	if ( $post_id && function_exists( 'tam_backend_api_get_tour_image_for_post' ) ) {
+		$backend_image = tam_backend_api_get_tour_image_for_post( $post_id );
+
+		if ( $backend_image ) {
+			$append_image( $backend_image, get_the_title( $post_id ) );
+			return array_slice( $gallery, 0, 1 );
+		}
+	}
+
 	if ( $post_id && has_post_thumbnail( $post_id ) ) {
 		$append_image(
 			get_the_post_thumbnail_url( $post_id, 'tam-hero-large' ),
@@ -1452,17 +1469,75 @@ function tam_get_tour_gallery_images( $post_id ) {
 		);
 	}
 
-	$attachment_ids = get_posts(
-		array(
-			'post_type'      => 'attachment',
-			'post_parent'    => $post_id,
-			'post_mime_type' => 'image',
-			'posts_per_page' => 6,
-			'fields'         => 'ids',
-			'orderby'        => 'menu_order ID',
-			'order'          => 'ASC',
-		)
-	);
+	if ( empty( $gallery ) ) {
+		$attachment_ids = get_posts(
+			array(
+				'post_type'      => 'attachment',
+				'post_parent'    => $post_id,
+				'post_mime_type' => 'image',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'orderby'        => 'menu_order ID',
+				'order'          => 'ASC',
+			)
+		);
+
+		if ( ! empty( $attachment_ids[0] ) ) {
+			$append_image(
+				wp_get_attachment_image_url( $attachment_ids[0], 'tam-hero-large' ),
+				get_post_meta( $attachment_ids[0], '_wp_attachment_image_alt', true )
+			);
+		}
+	}
+
+	if ( empty( $gallery ) ) {
+		$append_image( tam_get_tour_fallback_image_url( $post_id ), get_the_title( $post_id ) );
+	}
+
+	return array_slice( $gallery, 0, 1 );
+
+	$gallery = array();
+	$seen    = array();
+
+	$append_image = static function ( $url, $alt = '' ) use ( &$gallery, &$seen ) {
+		$url = trim( (string) $url );
+
+		if ( '' === $url || isset( $seen[ $url ] ) ) {
+			return;
+		}
+
+		$seen[ $url ] = true;
+		$gallery[]    = array(
+			'url' => $url,
+
+	$append_image = static function ( $url, $alt = '' ) use ( &$gallery, &$seen ) {
+		$url = trim( (string) $url );
+
+		if ( '' === $url || isset( $seen[ $url ] ) ) {
+			return;
+		}
+
+		$seen[ $url ] = true;
+		$gallery[]    = array(
+			'url' => $url,
+			'alt' => $alt ? $alt : get_bloginfo( 'name' ),
+		);
+	};
+
+	if ( $post_id && function_exists( 'tam_backend_api_get_tour_gallery_for_post' ) ) {
+		$backend_gallery = tam_backend_api_get_tour_gallery_for_post( $post_id );
+
+		if ( ! empty( $backend_gallery ) ) {
+			foreach ( $backend_gallery as $image_url ) {
+				$append_image( $image_url, get_the_title( $post_id ) );
+			}
+
+			return array_slice( $gallery, 0, 4 );
+		}
+	}
+
+	if ( $post_id && has_post_thumbnail( $post_id ) ) {
+		$append_image(
 
 	foreach ( $attachment_ids as $attachment_id ) {
 		$append_image(
@@ -1549,18 +1624,8 @@ function tam_get_tour_departure_options( $tour_meta ) {
 function tam_get_tour_highlights( $post_id, $tour_meta, $terms = array() ) {
 	$items = tam_split_lines( isset( $tour_meta['highlights'] ) ? $tour_meta['highlights'] : '' );
 
-	if ( ! empty( $items ) ) {
-		return $items;
-	}
-
-	$destination_name = ! empty( $terms ) ? $terms[0]->name : __( 'điểm đến nổi bật', 'travel-agency-modern' );
-
-	return array(
-		sprintf( __( 'Lịch trình gọn gàng, tập trung vào những trải nghiệm đẹp nhất tại %s.', 'travel-agency-modern' ), $destination_name ),
-		__( 'Kết hợp tham quan, ăn uống và khoảng nghỉ hợp lý để không bị quá tải.', 'travel-agency-modern' ),
-		__( 'Phù hợp cho nhóm bạn, gia đình nhỏ hoặc khách muốn đi tour trọn gói dễ quyết định.', 'travel-agency-modern' ),
-		__( 'Đội ngũ tư vấn của ADN Travel hỗ trợ trước chuyến đi và theo sát đến lúc khởi hành.', 'travel-agency-modern' ),
-	);
+	// Trả về đúng dữ liệu backend. Nếu trống, frontend ẩn section highlights.
+	return $items;
 }
 
 /**
@@ -1635,26 +1700,8 @@ function tam_get_tour_service_list( $tour_meta, $type = 'includes' ) {
 	$key   = 'excludes' === $type ? 'excludes' : 'includes';
 	$items = tam_split_lines( isset( $tour_meta[ $key ] ) ? $tour_meta[ $key ] : '' );
 
-	if ( ! empty( $items ) ) {
-		return $items;
-	}
-
-	if ( 'excludes' === $type ) {
-		return array(
-			__( 'Chi phí cá nhân ngoài chương trình', 'travel-agency-modern' ),
-			__( 'Đồ uống ngoài bữa ăn và các dịch vụ tự chọn', 'travel-agency-modern' ),
-			__( 'Thuế VAT và tip cho tài xế/hướng dẫn viên nếu phát sinh', 'travel-agency-modern' ),
-			__( 'Vé tham quan ngoài danh mục đã thống nhất trước chuyến đi', 'travel-agency-modern' ),
-		);
-	}
-
-	return array(
-		__( 'Xe đưa đón hoặc phương tiện theo đúng lịch trình công bố', 'travel-agency-modern' ),
-		__( 'Lưu trú tiêu chuẩn 3-4 sao hoặc tương đương', 'travel-agency-modern' ),
-		__( 'Bữa ăn theo chương trình và nước suối trên xe', 'travel-agency-modern' ),
-		__( 'Hướng dẫn viên đồng hành và hỗ trợ xuyên suốt chuyến đi', 'travel-agency-modern' ),
-		__( 'Bảo hiểm du lịch cơ bản và vé vào cổng các điểm chính', 'travel-agency-modern' ),
-	);
+	// Trả về đúng dữ liệu backend. Nếu trống, frontend hiển thị empty state.
+	return $items;
 }
 
 /**
@@ -1672,35 +1719,8 @@ function tam_get_tour_reviews( $post_id, $tour_meta ) {
 		}
 	}
 
-	$structured_rows = tam_parse_structured_rows( isset( $tour_meta['review_snippets'] ) ? $tour_meta['review_snippets'] : '', 3 );
-
-	if ( ! empty( $structured_rows ) ) {
-		return array_map(
-			static function ( $row ) {
-				return array(
-					'name'    => $row[0],
-					'rating'  => $row[1] ? $row[1] : '5.0',
-					'comment' => $row[2],
-				);
-			},
-			$structured_rows
-		);
-	}
-
-	$reviews       = tam_get_home_reviews_content();
-	$default_items = isset( $reviews['items'] ) ? $reviews['items'] : array();
-
-	return array_map(
-		function ( $item ) use ( $post_id ) {
-			return array(
-				'name'    => $item['name'],
-				'rating'  => $item['rating'],
-				'comment' => $item['quote'],
-				'route'   => get_the_title( $post_id ),
-			);
-		},
-		array_slice( $default_items, 0, 3 )
-	);
+	// Không có review thật từ backend — trả về rỗng, frontend hiển thị empty state.
+	return array();
 }
 
 /**

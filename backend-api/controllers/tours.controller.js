@@ -74,6 +74,92 @@ function normalizeStringArray(value) {
   return [];
 }
 
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  const normalized = normalizeText(value).toLowerCase();
+  return ['1', 'true', 'yes', 'on', 'active', 'featured'].includes(normalized);
+}
+
+function normalizeGallerySlots(value, fallbackImage = '') {
+  const primary = normalizeText(
+    Array.isArray(value) ? value[0] : (value || fallbackImage),
+  );
+
+  if (primary) {
+    return [primary];
+  }
+
+  const fallback = normalizeText(fallbackImage);
+  return fallback ? [fallback] : [];
+}
+
+function normalizeGalleryImages(value, fallbackImage = '') {
+  const slots = normalizeGallerySlots(value, fallbackImage);
+  const primary = normalizeText(Array.isArray(slots) && slots[0] ? slots[0] : '');
+  return primary ? [primary] : [];
+}
+
+function normalizeDepartureDates(value) {
+  const rows = [];
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      if (typeof item === 'string') {
+        const parts = item.split('|').map((part) => part.trim());
+        const rowValue = normalizeText(parts[0]);
+        const rowLabel = normalizeText(parts[1] || parts[0]);
+
+        if (rowValue) {
+          rows.push({
+            value: rowValue,
+            label: rowLabel || rowValue,
+          });
+        }
+
+        return;
+      }
+
+      if (!item || typeof item !== 'object') {
+        return;
+      }
+
+      const rowValue = normalizeText(item.value);
+      const rowLabel = normalizeText(item.label || item.value);
+
+      if (!rowValue) {
+        return;
+      }
+
+      rows.push({
+        value: rowValue,
+        label: rowLabel || rowValue,
+      });
+    });
+
+    return rows;
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split('|').map((part) => part.trim());
+        return {
+          value: normalizeText(parts[0]),
+          label: normalizeText(parts[1] || parts[0]),
+        };
+      })
+      .filter((item) => item.value);
+  }
+
+  return [];
+}
+
 function normalizeOverviewCards(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -174,6 +260,19 @@ function safelyParseJsonArray(value, fallback = []) {
   }
 }
 
+function getUploadedTourFiles(req) {
+  const fileGroups = req && req.files && typeof req.files === 'object' ? req.files : {};
+  const groupedImage = Array.isArray(fileGroups.image) && fileGroups.image[0] ? fileGroups.image[0] : null;
+
+  return {
+    image: req && req.file ? req.file : groupedImage,
+  };
+}
+
+function buildUploadedAssetPath(file) {
+  return file && file.filename ? `/uploads/tours/${file.filename}` : '';
+}
+
 async function getTourColumnSet() {
   const [columns] = await db.query('SHOW COLUMNS FROM tours');
   return new Set(columns.map((column) => column.Field));
@@ -194,17 +293,21 @@ function buildTourSelect(columnSet) {
 
   selectParts.push(columnSet.has('status') ? 'status' : "'Active' AS status");
   selectParts.push(columnSet.has('image_url') ? 'image_url' : 'NULL AS image_url');
+  selectParts.push(columnSet.has('gallery_images_json') ? 'gallery_images_json' : 'NULL AS gallery_images_json');
   selectParts.push(columnSet.has('transport') ? 'transport' : "'' AS transport");
   selectParts.push(columnSet.has('departure_note') ? 'departure_note' : "'' AS departure_note");
   selectParts.push(columnSet.has('tagline') ? 'tagline' : "'' AS tagline");
   selectParts.push(columnSet.has('badge') ? 'badge' : "'' AS badge");
+  selectParts.push(columnSet.has('is_featured') ? 'is_featured' : '0 AS is_featured');
   selectParts.push(columnSet.has('season') ? 'season' : "'' AS season");
   selectParts.push(columnSet.has('departure_schedule') ? 'departure_schedule' : "'' AS departure_schedule");
+  selectParts.push(columnSet.has('departure_dates_json') ? 'departure_dates_json' : 'NULL AS departure_dates_json');
   selectParts.push(columnSet.has('meeting_point') ? 'meeting_point' : "'' AS meeting_point");
   selectParts.push(columnSet.has('curator_note') ? 'curator_note' : "'' AS curator_note");
   selectParts.push(columnSet.has('curator_name') ? 'curator_name' : "'' AS curator_name");
   selectParts.push(columnSet.has('duration_text') ? 'duration_text' : "'' AS duration_text");
   selectParts.push(columnSet.has('included_items_json') ? 'included_items_json' : 'NULL AS included_items_json');
+  selectParts.push(columnSet.has('excluded_items_json') ? 'excluded_items_json' : 'NULL AS excluded_items_json');
   selectParts.push(columnSet.has('promise_items_json') ? 'promise_items_json' : 'NULL AS promise_items_json');
   selectParts.push(columnSet.has('overview_cards_json') ? 'overview_cards_json' : 'NULL AS overview_cards_json');
   selectParts.push(columnSet.has('highlights_json') ? 'highlights_json' : 'NULL AS highlights_json');
@@ -223,6 +326,8 @@ function buildTourSelect(columnSet) {
 
 function serializeTour(row) {
   const durationDays = row.duration === null || row.duration === undefined ? null : Number(row.duration);
+  const galleryImages = normalizeGalleryImages(safelyParseJsonArray(row.gallery_images_json), row.image_url || '');
+  const imageUrl = row.image_url || galleryImages[0] || null;
 
   return {
     id: row.id,
@@ -234,19 +339,23 @@ function serializeTour(row) {
     durationText: row.duration_text || buildDurationText('', durationDays),
     maxPeople: row.max_people === null || row.max_people === undefined ? null : Number(row.max_people),
     status: normalizeStatus(row.status),
-    imageUrl: row.image_url || null,
+    imageUrl,
+    galleryImages: imageUrl ? [imageUrl] : [],
     transport: row.transport || '',
     departureNote: row.departure_note || '',
     tagline: row.tagline || '',
     badge: row.badge || '',
+    featured: row.is_featured === null || row.is_featured === undefined ? !!(row.badge || '') : Boolean(Number(row.is_featured)),
     season: row.season || '',
     departureSchedule: row.departure_schedule || '',
+    departureDates: normalizeDepartureDates(safelyParseJsonArray(row.departure_dates_json)),
     meetingPoint: row.meeting_point || '',
     curatorNote: row.curator_note || '',
     curatorName: row.curator_name || '',
     rating: row.average_rating === null || row.average_rating === undefined ? null : Number(row.average_rating),
     reviews: row.total_reviews === null || row.total_reviews === undefined ? 0 : Number(row.total_reviews),
     includes: safelyParseJsonArray(row.included_items_json),
+    excludes: safelyParseJsonArray(row.excluded_items_json),
     promiseItems: safelyParseJsonArray(row.promise_items_json),
     overviewCards: safelyParseJsonArray(row.overview_cards_json),
     highlights: safelyParseJsonArray(row.highlights_json),
@@ -285,9 +394,15 @@ function getRequestPayload(req) {
     }
   }
 
-  if (req.file) {
-    requestBody.imageUrl = `/uploads/tours/${req.file.filename}`;
-  }
+  const uploadedFiles = getUploadedTourFiles(req);
+  const galleryImages = normalizeGalleryImages(
+    requestBody.galleryImages ?? requestBody.gallery_images,
+    requestBody.imageUrl || requestBody.image_url,
+  );
+  const uploadedImage = uploadedFiles.image ? buildUploadedAssetPath(uploadedFiles.image) : '';
+
+  requestBody.imageUrl = uploadedImage || normalizeText(requestBody.imageUrl || requestBody.image_url || galleryImages[0] || '');
+  requestBody.galleryImages = requestBody.imageUrl ? [requestBody.imageUrl] : [];
 
   return {
     body: requestBody,
@@ -295,7 +410,21 @@ function getRequestPayload(req) {
 }
 
 async function removeUploadedFile(file) {
-  if (!file?.path) {
+  if (!file) {
+    return;
+  }
+
+  if (Array.isArray(file)) {
+    await Promise.all(file.map((item) => removeUploadedFile(item)));
+    return;
+  }
+
+  if (typeof file === 'object' && !file.path) {
+    await Promise.all(Object.values(file).map((item) => removeUploadedFile(item)));
+    return;
+  }
+
+  if (!file.path) {
     return;
   }
 
@@ -315,17 +444,21 @@ function buildWritePayload(body = {}, adminId = null) {
   const price = parseNumber(body.price);
   const maxPeople = parsePositiveInteger(body.maxPeople ?? body.max_people ?? body.groupSize);
   const status = normalizeStatus(body.status || 'Draft');
-  const imageUrl = normalizeText(body.imageUrl || body.image_url);
+  const galleryImages = normalizeGalleryImages(body.galleryImages ?? body.gallery_images, body.imageUrl || body.image_url);
+  const imageUrl = normalizeText(body.imageUrl || body.image_url || galleryImages[0] || '');
   const transport = normalizeText(body.transport);
   const departureNote = normalizeText(body.departureNote || body.departure_note || body.departure);
   const tagline = normalizeText(body.tagline);
   const badge = normalizeText(body.badge);
+  const featured = normalizeBoolean(body.featured ?? body.is_featured ?? body.isFeatured ?? badge);
   const season = normalizeText(body.season);
   const departureSchedule = normalizeText(body.departureSchedule || body.departure_schedule);
+  const departureDates = normalizeDepartureDates(body.departureDates ?? body.departure_dates);
   const meetingPoint = normalizeText(body.meetingPoint || body.meeting_point);
   const curatorNote = normalizeText(body.curatorNote || body.curator_note);
   const curatorName = normalizeText(body.curatorName || body.curator_name);
   const includes = normalizeStringArray(body.includes ?? body.includedItems);
+  const excludes = normalizeStringArray(body.excludes ?? body.excludedItems);
   const promiseItems = normalizeStringArray(body.promiseItems ?? body.promise_items);
   const overviewCards = normalizeOverviewCards(body.overviewCards ?? body.overview_cards);
   const highlights = normalizeHighlights(body.highlights);
@@ -348,6 +481,10 @@ function buildWritePayload(body = {}, adminId = null) {
     validationErrors.price = 'Gia tour phai la so hop le.';
   }
 
+  if (!imageUrl) {
+    validationErrors.imageUrl = 'Vui long chon anh chinh cho tour.';
+  }
+
   return {
     data: {
       title,
@@ -359,16 +496,20 @@ function buildWritePayload(body = {}, adminId = null) {
       maxPeople,
       status,
       imageUrl: imageUrl || null,
+      galleryImages: imageUrl ? [imageUrl] : [],
       transport: transport || null,
       departureNote: departureNote || null,
       tagline: tagline || null,
       badge: badge || null,
+      featured,
       season: season || null,
       departureSchedule: departureSchedule || null,
+      departureDates,
       meetingPoint: meetingPoint || null,
       curatorNote: curatorNote || null,
       curatorName: curatorName || null,
       includes,
+      excludes,
       promiseItems,
       overviewCards,
       highlights,
@@ -400,6 +541,11 @@ function buildInsertParts(columnSet, payload) {
     values.push(payload.imageUrl);
   }
 
+  if (columnSet.has('gallery_images_json')) {
+    columns.push('gallery_images_json');
+    values.push(JSON.stringify(payload.galleryImages));
+  }
+
   if (columnSet.has('transport')) {
     columns.push('transport');
     values.push(payload.transport);
@@ -420,6 +566,11 @@ function buildInsertParts(columnSet, payload) {
     values.push(payload.badge);
   }
 
+  if (columnSet.has('is_featured')) {
+    columns.push('is_featured');
+    values.push(payload.featured ? 1 : 0);
+  }
+
   if (columnSet.has('season')) {
     columns.push('season');
     values.push(payload.season);
@@ -428,6 +579,11 @@ function buildInsertParts(columnSet, payload) {
   if (columnSet.has('departure_schedule')) {
     columns.push('departure_schedule');
     values.push(payload.departureSchedule);
+  }
+
+  if (columnSet.has('departure_dates_json')) {
+    columns.push('departure_dates_json');
+    values.push(JSON.stringify(payload.departureDates));
   }
 
   if (columnSet.has('meeting_point')) {
@@ -453,6 +609,11 @@ function buildInsertParts(columnSet, payload) {
   if (columnSet.has('included_items_json')) {
     columns.push('included_items_json');
     values.push(JSON.stringify(payload.includes));
+  }
+
+  if (columnSet.has('excluded_items_json')) {
+    columns.push('excluded_items_json');
+    values.push(JSON.stringify(payload.excludes));
   }
 
   if (columnSet.has('promise_items_json')) {
@@ -511,6 +672,11 @@ function buildUpdateParts(columnSet, payload) {
     values.push(payload.imageUrl);
   }
 
+  if (columnSet.has('gallery_images_json')) {
+    assignments.push('gallery_images_json = ?');
+    values.push(JSON.stringify(payload.galleryImages));
+  }
+
   if (columnSet.has('transport')) {
     assignments.push('transport = ?');
     values.push(payload.transport);
@@ -531,6 +697,11 @@ function buildUpdateParts(columnSet, payload) {
     values.push(payload.badge);
   }
 
+  if (columnSet.has('is_featured')) {
+    assignments.push('is_featured = ?');
+    values.push(payload.featured ? 1 : 0);
+  }
+
   if (columnSet.has('season')) {
     assignments.push('season = ?');
     values.push(payload.season);
@@ -539,6 +710,11 @@ function buildUpdateParts(columnSet, payload) {
   if (columnSet.has('departure_schedule')) {
     assignments.push('departure_schedule = ?');
     values.push(payload.departureSchedule);
+  }
+
+  if (columnSet.has('departure_dates_json')) {
+    assignments.push('departure_dates_json = ?');
+    values.push(JSON.stringify(payload.departureDates));
   }
 
   if (columnSet.has('meeting_point')) {
@@ -564,6 +740,11 @@ function buildUpdateParts(columnSet, payload) {
   if (columnSet.has('included_items_json')) {
     assignments.push('included_items_json = ?');
     values.push(JSON.stringify(payload.includes));
+  }
+
+  if (columnSet.has('excluded_items_json')) {
+    assignments.push('excluded_items_json = ?');
+    values.push(JSON.stringify(payload.excludes));
   }
 
   if (columnSet.has('promise_items_json')) {
@@ -688,9 +869,10 @@ exports.getTourById = async (req, res) => {
 
 exports.createTour = async (req, res) => {
   const { body: requestBody, error: payloadError } = getRequestPayload(req);
+  const uploadedFiles = req.files || req.file;
 
   if (payloadError) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(400).json({
       message: payloadError,
     });
@@ -699,7 +881,7 @@ exports.createTour = async (req, res) => {
   const { data, validationErrors } = buildWritePayload(requestBody, req.admin?.id || null);
 
   if (Object.keys(validationErrors).length > 0) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(400).json({
       message: 'Du lieu tour chua hop le.',
       errors: validationErrors,
@@ -723,7 +905,7 @@ exports.createTour = async (req, res) => {
       tour: createdTour,
     });
   } catch (error) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(500).json({
       message: 'Khong the tao tour luc nay.',
       error: error.message,
@@ -733,9 +915,10 @@ exports.createTour = async (req, res) => {
 
 exports.updateTour = async (req, res) => {
   const tourId = Number(req.params.id);
+  const uploadedFiles = req.files || req.file;
 
   if (!Number.isInteger(tourId) || tourId <= 0) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(400).json({
       message: 'Ma tour khong hop le.',
     });
@@ -744,7 +927,7 @@ exports.updateTour = async (req, res) => {
   const { body: requestBody, error: payloadError } = getRequestPayload(req);
 
   if (payloadError) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(400).json({
       message: payloadError,
     });
@@ -753,7 +936,7 @@ exports.updateTour = async (req, res) => {
   const { data, validationErrors } = buildWritePayload(requestBody, req.admin?.id || null);
 
   if (Object.keys(validationErrors).length > 0) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(400).json({
       message: 'Du lieu tour chua hop le.',
       errors: validationErrors,
@@ -765,7 +948,7 @@ exports.updateTour = async (req, res) => {
     const existingTour = await getExistingTour(tourId, columnSet);
 
     if (!existingTour) {
-      await removeUploadedFile(req.file);
+      await removeUploadedFile(uploadedFiles);
       return res.status(404).json({
         message: 'Khong tim thay tour de cap nhat.',
       });
@@ -783,7 +966,7 @@ exports.updateTour = async (req, res) => {
       tour: updatedTour,
     });
   } catch (error) {
-    await removeUploadedFile(req.file);
+    await removeUploadedFile(uploadedFiles);
     return res.status(500).json({
       message: 'Khong the cap nhat tour luc nay.',
       error: error.message,

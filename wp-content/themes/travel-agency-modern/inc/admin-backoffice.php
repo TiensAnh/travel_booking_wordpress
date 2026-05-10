@@ -66,18 +66,6 @@ function tam_backend_admin_pages() {
 			'icon'       => 'dashicons-money-alt',
 			'protected'  => true,
 		),
-		'tam-admin-sync'      => array(
-			'label'      => __( 'Sync Tours', 'travel-agency-modern' ),
-			'menu_title' => __( 'Sync Tours', 'travel-agency-modern' ),
-			'icon'       => 'dashicons-update',
-			'protected'  => true,
-		),
-		'tam-admin-connect'   => array(
-			'label'      => __( 'Backend Connect', 'travel-agency-modern' ),
-			'menu_title' => __( 'Backend Connect', 'travel-agency-modern' ),
-			'icon'       => 'dashicons-admin-network',
-			'protected'  => false,
-		),
 	);
 }
 
@@ -89,6 +77,10 @@ function tam_backend_admin_pages() {
  * @return string
  */
 function tam_backend_admin_page_url( $slug, $args = array() ) {
+	if ( in_array( $slug, array( 'tam-admin-sync', 'tam-admin-connect' ), true ) ) {
+		$slug = TAM_BACKEND_ADMIN_MENU_SLUG;
+	}
+
 	$query_args = array_merge(
 		array(
 			'page' => $slug,
@@ -285,6 +277,319 @@ function tam_backend_admin_get_profile() {
 }
 
 /**
+ * Persist the latest backend auto-connect error for the current request.
+ *
+ * @param WP_Error|null $error Optional connection error.
+ * @return void
+ */
+function tam_backend_admin_set_runtime_connection_error( $error = null ) {
+	if ( $error instanceof WP_Error ) {
+		$GLOBALS['tam_backend_admin_runtime_connection_error'] = $error;
+		return;
+	}
+
+	unset( $GLOBALS['tam_backend_admin_runtime_connection_error'] );
+}
+
+/**
+ * Return the latest backend auto-connect error for the current request.
+ *
+ * @return WP_Error|null
+ */
+function tam_backend_admin_get_runtime_connection_error() {
+	return isset( $GLOBALS['tam_backend_admin_runtime_connection_error'] ) && $GLOBALS['tam_backend_admin_runtime_connection_error'] instanceof WP_Error
+		? $GLOBALS['tam_backend_admin_runtime_connection_error']
+		: null;
+}
+
+/**
+ * Return the backend JWT secret shared with the Node API.
+ *
+ * @return string
+ */
+function tam_backend_admin_get_jwt_secret() {
+	$env_values = function_exists( 'tam_backend_api_get_env_values' ) ? tam_backend_api_get_env_values() : array();
+	$secret     = isset( $env_values['JWT_SECRET'] ) ? trim( (string) $env_values['JWT_SECRET'] ) : '';
+
+	return $secret;
+}
+
+/**
+ * Base64-url encode a string for JWT creation.
+ *
+ * @param string $value Raw value.
+ * @return string
+ */
+function tam_backend_admin_base64url_encode( $value ) {
+	return rtrim( strtr( base64_encode( (string) $value ), '+/', '-_' ), '=' );
+}
+
+/**
+ * Build a signed JWT for backend admin requests.
+ *
+ * @param array  $payload Token payload.
+ * @param string $secret  HMAC secret.
+ * @return string
+ */
+function tam_backend_admin_build_jwt( $payload, $secret ) {
+	$header    = array(
+		'alg' => 'HS256',
+		'typ' => 'JWT',
+	);
+	$segments  = array(
+		tam_backend_admin_base64url_encode( wp_json_encode( $header ) ),
+		tam_backend_admin_base64url_encode( wp_json_encode( is_array( $payload ) ? $payload : array() ) ),
+	);
+	$signature = hash_hmac( 'sha256', implode( '.', $segments ), (string) $secret, true );
+	$segments[] = tam_backend_admin_base64url_encode( $signature );
+
+	return implode( '.', $segments );
+}
+
+/**
+ * Ensure the backend admins table exists.
+ *
+ * @return true|WP_Error
+ */
+function tam_backend_admin_ensure_admin_table() {
+	global $wpdb;
+
+	$admins_table = function_exists( 'tam_backend_api_get_storage_table_name' ) ? tam_backend_api_get_storage_table_name( 'admins' ) : '';
+
+	if ( '' === $admins_table ) {
+		return new WP_Error(
+			'tam_backend_admin_table_missing',
+			__( 'Khong tim thay bang admins cua backend-api. Hay kiem tra backend-api/.env va schema backend.', 'travel-agency-modern' )
+		);
+	}
+
+	$wpdb->query(
+		"CREATE TABLE IF NOT EXISTS {$admins_table} (
+			id INT PRIMARY KEY AUTO_INCREMENT,
+			username VARCHAR(50) NOT NULL UNIQUE,
+			email VARCHAR(100) NOT NULL UNIQUE,
+			password VARCHAR(255) NOT NULL,
+			role ENUM('admin') DEFAULT 'admin',
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)"
+	); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+	if ( ! empty( $wpdb->last_error ) ) {
+		$error = new WP_Error(
+			'tam_backend_admin_table_create_failed',
+			sprintf(
+				/* translators: %s: MySQL error message. */
+				__( 'WordPress khong the chuan bi bang admins cua backend: %s', 'travel-agency-modern' ),
+				$wpdb->last_error
+			)
+		);
+		$wpdb->last_error = '';
+
+		return $error;
+	}
+
+	return true;
+}
+
+/**
+ * Build a stable backend username candidate from the current WP admin.
+ *
+ * @param WP_User $wp_user Current WP user.
+ * @return string
+ */
+function tam_backend_admin_build_username_seed( $wp_user ) {
+	$candidate = '';
+
+	if ( $wp_user instanceof WP_User ) {
+		$candidate = $wp_user->user_login ? (string) $wp_user->user_login : (string) $wp_user->display_name;
+	}
+
+	if ( '' === $candidate && $wp_user instanceof WP_User ) {
+		$email_parts = explode( '@', (string) $wp_user->user_email );
+		$candidate   = ! empty( $email_parts[0] ) ? (string) $email_parts[0] : '';
+	}
+
+	$candidate = strtolower( (string) $candidate );
+	$candidate = preg_replace( '/[^a-z0-9]+/', '_', $candidate );
+	$candidate = trim( (string) $candidate, '_' );
+
+	if ( '' === $candidate ) {
+		$candidate = 'wp_admin';
+	}
+
+	return substr( $candidate, 0, 40 );
+}
+
+/**
+ * Find or create a matching backend admin row for the current WP admin.
+ *
+ * @param WP_User $wp_user Current WP user.
+ * @return array|WP_Error
+ */
+function tam_backend_admin_get_or_create_backend_admin( $wp_user ) {
+	global $wpdb;
+
+	$state = tam_backend_admin_ensure_admin_table();
+
+	if ( is_wp_error( $state ) ) {
+		return $state;
+	}
+
+	$admins_table = tam_backend_api_get_storage_table_name( 'admins' );
+	$email        = $wp_user instanceof WP_User ? sanitize_email( (string) $wp_user->user_email ) : '';
+
+	if ( '' === $email ) {
+		return new WP_Error(
+			'tam_backend_admin_email_missing',
+			__( 'Tai khoan WordPress admin chua co email hop le de dong bo voi backend.', 'travel-agency-modern' )
+		);
+	}
+
+	$existing = $wpdb->get_row(
+		$wpdb->prepare( "SELECT id, username, email, role FROM {$admins_table} WHERE email = %s LIMIT 1", $email ),
+		ARRAY_A
+	);
+
+	if ( ! empty( $wpdb->last_error ) ) {
+		$error = new WP_Error( 'tam_backend_admin_lookup_failed', $wpdb->last_error );
+		$wpdb->last_error = '';
+		return $error;
+	}
+
+	if ( is_array( $existing ) && ! empty( $existing['id'] ) ) {
+		return array(
+			'id'    => (int) $existing['id'],
+			'name'  => isset( $existing['username'] ) ? (string) $existing['username'] : '',
+			'email' => isset( $existing['email'] ) ? (string) $existing['email'] : $email,
+			'role'  => isset( $existing['role'] ) ? (string) $existing['role'] : 'admin',
+		);
+	}
+
+	$base_username = tam_backend_admin_build_username_seed( $wp_user );
+	$username      = $base_username;
+	$counter       = 1;
+
+	while ( $counter <= 50 ) {
+		$username_taken = $wpdb->get_var(
+			$wpdb->prepare( "SELECT id FROM {$admins_table} WHERE username = %s LIMIT 1", $username )
+		);
+
+		if ( ! empty( $wpdb->last_error ) ) {
+			$error = new WP_Error( 'tam_backend_admin_username_lookup_failed', $wpdb->last_error );
+			$wpdb->last_error = '';
+			return $error;
+		}
+
+		if ( empty( $username_taken ) ) {
+			break;
+		}
+
+		$suffix   = '_' . (string) $counter;
+		$username = substr( $base_username, 0, max( 1, 50 - strlen( $suffix ) ) ) . $suffix;
+		++$counter;
+	}
+
+	$password_hash = password_hash( wp_generate_password( 32, true, true ), PASSWORD_BCRYPT );
+
+	if ( false === $password_hash ) {
+		return new WP_Error(
+			'tam_backend_admin_password_failed',
+			__( 'Khong the tao mat khau backend tam thoi cho WordPress admin.', 'travel-agency-modern' )
+		);
+	}
+
+	$inserted = $wpdb->query(
+		$wpdb->prepare(
+			"INSERT INTO {$admins_table} (username, email, password, role) VALUES (%s, %s, %s, %s)",
+			$username,
+			$email,
+			$password_hash,
+			'admin'
+		)
+	);
+
+	if ( false === $inserted || ! empty( $wpdb->last_error ) ) {
+		$error = new WP_Error(
+			'tam_backend_admin_insert_failed',
+			$wpdb->last_error ? $wpdb->last_error : __( 'Khong the tao admin backend tu dong.', 'travel-agency-modern' )
+		);
+		$wpdb->last_error = '';
+		return $error;
+	}
+
+	return array(
+		'id'    => (int) $wpdb->insert_id,
+		'name'  => $username,
+		'email' => $email,
+		'role'  => 'admin',
+	);
+}
+
+/**
+ * Ensure the current WordPress admin has an automatic backend admin session.
+ *
+ * @param bool $force_refresh Whether to rebuild the session now.
+ * @return true|WP_Error
+ */
+function tam_backend_admin_ensure_auto_session( $force_refresh = false ) {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return new WP_Error( 'tam_backend_admin_forbidden', __( 'Ban khong co quyen truy cap admin backend.', 'travel-agency-modern' ) );
+	}
+
+	$wp_user = wp_get_current_user();
+
+	if ( ! ( $wp_user instanceof WP_User ) || ! $wp_user->exists() ) {
+		return new WP_Error( 'tam_backend_admin_wp_user_missing', __( 'Khong tim thay tai khoan WordPress admin hien tai.', 'travel-agency-modern' ) );
+	}
+
+	$profile = tam_backend_admin_get_profile();
+	$token   = tam_backend_admin_get_token();
+
+	if ( ! $force_refresh && '' !== $token && ! empty( $profile['email'] ) ) {
+		tam_backend_admin_set_runtime_connection_error();
+		return true;
+	}
+
+	$secret = tam_backend_admin_get_jwt_secret();
+
+	if ( '' === $secret ) {
+		$error = new WP_Error(
+			'tam_backend_admin_secret_missing',
+			__( 'Khong tim thay JWT_SECRET trong backend-api/.env nen khong the dong bo admin tu dong.', 'travel-agency-modern' )
+		);
+		tam_backend_admin_set_runtime_connection_error( $error );
+		return $error;
+	}
+
+	$admin = tam_backend_admin_get_or_create_backend_admin( $wp_user );
+
+	if ( is_wp_error( $admin ) ) {
+		tam_backend_admin_set_runtime_connection_error( $admin );
+		return $admin;
+	}
+
+	$payload = array(
+		'adminId' => (int) $admin['id'],
+		'scope'   => 'admin',
+		'role'    => isset( $admin['role'] ) ? (string) $admin['role'] : 'admin',
+		'iat'     => time(),
+		'exp'     => time() + ( 7 * DAY_IN_SECONDS ),
+	);
+
+	$session_admin = array(
+		'id'    => (int) $admin['id'],
+		'name'  => isset( $admin['name'] ) ? (string) $admin['name'] : ( $wp_user->display_name ? (string) $wp_user->display_name : (string) $wp_user->user_login ),
+		'email' => isset( $admin['email'] ) ? (string) $admin['email'] : (string) $wp_user->user_email,
+		'role'  => isset( $admin['role'] ) ? (string) $admin['role'] : 'admin',
+	);
+
+	tam_backend_admin_set_session( tam_backend_admin_build_jwt( $payload, $secret ), $session_admin );
+	tam_backend_admin_set_runtime_connection_error();
+
+	return true;
+}
+
+/**
  * Whether the current WP admin user has an active backend admin session.
  *
  * @return bool
@@ -309,6 +614,219 @@ function tam_backend_admin_error_response( $message, $status = 0, $errors = arra
 		'data'    => array(),
 		'errors'  => is_array( $errors ) ? $errors : array(),
 	);
+}
+
+/**
+ * Return a readable upload error message for the admin tour form.
+ *
+ * @param int $error_code PHP upload error code.
+ * @return string
+ */
+function tam_backend_admin_get_upload_error_message( $error_code ) {
+	switch ( (int) $error_code ) {
+		case UPLOAD_ERR_INI_SIZE:
+		case UPLOAD_ERR_FORM_SIZE:
+			return __( 'Ảnh tải lên vượt quá giới hạn dung lượng cho phép.', 'travel-agency-modern' );
+		case UPLOAD_ERR_PARTIAL:
+			return __( 'Ảnh tải lên chưa hoàn tất. Vui lòng thử lại.', 'travel-agency-modern' );
+		case UPLOAD_ERR_NO_TMP_DIR:
+			return __( 'Máy chủ đang thiếu thư mục tạm để nhận ảnh.', 'travel-agency-modern' );
+		case UPLOAD_ERR_CANT_WRITE:
+			return __( 'Không thể ghi file ảnh lên máy chủ lúc này.', 'travel-agency-modern' );
+		case UPLOAD_ERR_EXTENSION:
+			return __( 'Ảnh đã bị chặn bởi cấu hình máy chủ.', 'travel-agency-modern' );
+		default:
+			return __( 'Không thể tải ảnh lên lúc này. Vui lòng thử lại.', 'travel-agency-modern' );
+	}
+}
+
+/**
+ * Validate an uploaded tour image before sending it to the backend.
+ *
+ * @param array $file Uploaded file array from $_FILES.
+ * @return string Empty string when the file is valid.
+ */
+function tam_backend_admin_validate_tour_image_upload( $file ) {
+	$file = is_array( $file ) ? $file : array();
+
+	if ( empty( $file ) || empty( $file['name'] ) ) {
+		return '';
+	}
+
+	$error_code = isset( $file['error'] ) ? (int) $file['error'] : UPLOAD_ERR_OK;
+
+	if ( UPLOAD_ERR_NO_FILE === $error_code ) {
+		return '';
+	}
+
+	if ( UPLOAD_ERR_OK !== $error_code ) {
+		return tam_backend_admin_get_upload_error_message( $error_code );
+	}
+
+	if ( empty( $file['tmp_name'] ) || ! is_readable( $file['tmp_name'] ) ) {
+		return __( 'Không thể đọc file ảnh bạn vừa chọn.', 'travel-agency-modern' );
+	}
+
+	$allowed_mimes = array(
+		'jpg|jpeg|jpe' => 'image/jpeg',
+		'png'          => 'image/png',
+		'webp'         => 'image/webp',
+	);
+	$file_check    = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'], $allowed_mimes );
+
+	if ( empty( $file_check['ext'] ) || empty( $file_check['type'] ) ) {
+		return __( 'Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP cho ảnh chính tour.', 'travel-agency-modern' );
+	}
+
+	return '';
+}
+
+/**
+ * Return the fixed upload slots used by the admin tour form.
+ *
+ * @return array<string, array<string, string|int>>
+ */
+function tam_backend_admin_get_tour_upload_slots() {
+	return array(
+		'image' => array(
+			'input_name' => 'tour_image',
+			'error_key'  => 'tour_image',
+			'label'      => __( 'Ảnh chính', 'travel-agency-modern' ),
+			'index'      => 0,
+		),
+	);
+
+	return array(
+		'image'         => array(
+			'input_name' => 'tour_image',
+			'error_key'  => 'tour_image_main',
+			'label'      => __( 'Ảnh chính', 'travel-agency-modern' ),
+			'index'      => 0,
+		),
+		'galleryImage1' => array(
+			'input_name' => 'tour_image_1',
+			'error_key'  => 'tour_image_1',
+			'label'      => __( 'Ảnh phụ 1', 'travel-agency-modern' ),
+			'index'      => 1,
+		),
+		'galleryImage2' => array(
+			'input_name' => 'tour_image_2',
+			'error_key'  => 'tour_image_2',
+			'label'      => __( 'Ảnh phụ 2', 'travel-agency-modern' ),
+			'index'      => 2,
+		),
+		'galleryImage3' => array(
+			'input_name' => 'tour_image_3',
+			'error_key'  => 'tour_image_3',
+			'label'      => __( 'Ảnh phụ 3', 'travel-agency-modern' ),
+			'index'      => 3,
+		),
+	);
+}
+
+/**
+ * Normalize a 4-slot gallery array for the admin form.
+ *
+ * @param mixed  $gallery_images Raw gallery input.
+ * @param string $fallback_image Main image fallback.
+ * @return string[]
+ */
+function tam_backend_admin_normalize_gallery_images( $gallery_images, $fallback_image = '' ) {
+	$primary = '';
+
+	if ( is_array( $gallery_images ) ) {
+		$first   = array_shift( $gallery_images );
+		$primary = esc_url_raw( trim( (string) $first ) );
+	} elseif ( is_string( $gallery_images ) && '' !== trim( $gallery_images ) ) {
+		$primary = esc_url_raw( trim( $gallery_images ) );
+	}
+
+	if ( '' === $primary && '' !== trim( (string) $fallback_image ) ) {
+		$primary = esc_url_raw( trim( (string) $fallback_image ) );
+	}
+
+	return $primary ? array( $primary ) : array();
+
+	$slots = array_fill( 0, 4, '' );
+
+	if ( is_array( $gallery_images ) ) {
+		foreach ( array_slice( array_values( $gallery_images ), 0, 4 ) as $index => $item ) {
+			$slots[ $index ] = esc_url_raw( trim( (string) $item ) );
+		}
+	} elseif ( is_string( $gallery_images ) && '' !== trim( $gallery_images ) ) {
+		$slots[0] = esc_url_raw( trim( $gallery_images ) );
+	}
+
+	if ( '' === $slots[0] && '' !== trim( (string) $fallback_image ) ) {
+		$slots[0] = esc_url_raw( trim( (string) $fallback_image ) );
+	}
+
+	return $slots;
+}
+
+/**
+ * Collect the fixed tour upload slots from the current request.
+ *
+ * @return array<string, array>
+ */
+function tam_backend_admin_collect_tour_uploads() {
+	$uploads = array();
+
+	foreach ( tam_backend_admin_get_tour_upload_slots() as $backend_field => $slot ) {
+		$input_name             = isset( $slot['input_name'] ) ? (string) $slot['input_name'] : '';
+		$uploads[ $backend_field ] = isset( $_FILES[ $input_name ] ) && is_array( $_FILES[ $input_name ] ) ? $_FILES[ $input_name ] : array();
+	}
+
+	return $uploads;
+}
+
+/**
+ * Whether at least one tour image file was uploaded.
+ *
+ * @param array $uploads Upload map.
+ * @return bool
+ */
+function tam_backend_admin_has_tour_uploads( $uploads ) {
+	foreach ( is_array( $uploads ) ? $uploads : array() as $file ) {
+		if ( is_array( $file ) && ! empty( $file['tmp_name'] ) && is_readable( $file['tmp_name'] ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Validate the submitted tour gallery uploads.
+ *
+ * @param array $uploads         Upload map keyed by backend field name.
+ * @param bool  $require_primary Whether the main image is required.
+ * @return array<string, string>
+ */
+function tam_backend_admin_validate_tour_uploads( $uploads, $require_primary = false ) {
+	$errors = array();
+	$slots  = tam_backend_admin_get_tour_upload_slots();
+
+	foreach ( $slots as $backend_field => $slot ) {
+		$file      = isset( $uploads[ $backend_field ] ) && is_array( $uploads[ $backend_field ] ) ? $uploads[ $backend_field ] : array();
+		$error_key = isset( $slot['error_key'] ) ? (string) $slot['error_key'] : $backend_field;
+		$message   = tam_backend_admin_validate_tour_image_upload( $file );
+
+		if ( '' !== $message ) {
+			$errors[ $error_key ] = $message;
+		}
+	}
+
+	if ( $require_primary ) {
+		$main_file = isset( $uploads['image'] ) && is_array( $uploads['image'] ) ? $uploads['image'] : array();
+		$has_main  = ! empty( $main_file['name'] ) && ( ! isset( $main_file['error'] ) || UPLOAD_ERR_NO_FILE !== (int) $main_file['error'] );
+
+		if ( ! $has_main ) {
+			$errors['imageUrl'] = __( 'Vui lòng chọn ảnh chính cho tour mới.', 'travel-agency-modern' );
+		}
+	}
+
+	return $errors;
 }
 
 /**
@@ -411,6 +929,36 @@ function tam_backend_admin_format_pipe_rows( $items, $keys ) {
  */
 function tam_backend_admin_default_tour_form() {
 	return array(
+		'title'                => '',
+		'description'          => '',
+		'location'             => '',
+		'duration'             => '',
+		'durationText'         => '',
+		'price'                => '',
+		'maxPeople'            => '',
+		'status'               => 'Draft',
+		'transport'            => '',
+		'departureNote'        => '',
+		'tagline'              => '',
+		'badge'                => '',
+		'featured'             => '0',
+		'season'               => '',
+		'departureSchedule'    => '',
+		'departure_dates_text' => '',
+		'meetingPoint'         => '',
+		'curatorNote'          => '',
+		'curatorName'          => '',
+		'includes_text'        => '',
+		'excludes_text'        => '',
+		'promise_text'         => '',
+		'overview_text'        => '',
+		'highlights_text'      => '',
+		'itinerary_text'       => '',
+		'imageUrl'             => '',
+		'galleryImages'        => array(),
+	);
+
+	return array(
 		'title'             => '',
 		'description'       => '',
 		'location'          => '',
@@ -423,17 +971,21 @@ function tam_backend_admin_default_tour_form() {
 		'departureNote'     => '',
 		'tagline'           => '',
 		'badge'             => '',
+		'featured'          => '0',
 		'season'            => '',
 		'departureSchedule' => '',
+		'departure_dates_text' => '',
 		'meetingPoint'      => '',
 		'curatorNote'       => '',
 		'curatorName'       => '',
 		'includes_text'     => '',
+		'excludes_text'     => '',
 		'promise_text'      => '',
 		'overview_text'     => '',
 		'highlights_text'   => '',
 		'itinerary_text'    => '',
 		'imageUrl'          => '',
+		'galleryImages'     => array_fill( 0, 4, '' ),
 	);
 }
 
@@ -444,6 +996,42 @@ function tam_backend_admin_default_tour_form() {
  * @return array
  */
 function tam_backend_admin_tour_form_from_tour( $tour ) {
+	$form = tam_backend_admin_default_tour_form();
+
+	if ( ! is_array( $tour ) ) {
+		return $form;
+	}
+
+	$form['title']                = isset( $tour['title'] ) ? (string) $tour['title'] : '';
+	$form['description']          = isset( $tour['description'] ) ? (string) $tour['description'] : '';
+	$form['location']             = isset( $tour['location'] ) ? (string) $tour['location'] : '';
+	$form['duration']             = isset( $tour['duration'] ) ? (string) $tour['duration'] : '';
+	$form['durationText']         = isset( $tour['durationText'] ) ? (string) $tour['durationText'] : '';
+	$form['price']                = isset( $tour['price'] ) ? (string) $tour['price'] : '';
+	$form['maxPeople']            = isset( $tour['maxPeople'] ) ? (string) $tour['maxPeople'] : '';
+	$form['status']               = isset( $tour['status'] ) ? (string) $tour['status'] : 'Draft';
+	$form['transport']            = isset( $tour['transport'] ) ? (string) $tour['transport'] : '';
+	$form['departureNote']        = isset( $tour['departureNote'] ) ? (string) $tour['departureNote'] : '';
+	$form['tagline']              = isset( $tour['tagline'] ) ? (string) $tour['tagline'] : '';
+	$form['badge']                = isset( $tour['badge'] ) ? (string) $tour['badge'] : '';
+	$form['featured']             = ! empty( $tour['featured'] ) ? '1' : '0';
+	$form['season']               = isset( $tour['season'] ) ? (string) $tour['season'] : '';
+	$form['departureSchedule']    = isset( $tour['departureSchedule'] ) ? (string) $tour['departureSchedule'] : '';
+	$form['departure_dates_text'] = tam_backend_admin_format_pipe_rows( isset( $tour['departureDates'] ) ? $tour['departureDates'] : array(), array( 'value', 'label' ) );
+	$form['meetingPoint']         = isset( $tour['meetingPoint'] ) ? (string) $tour['meetingPoint'] : '';
+	$form['curatorNote']          = isset( $tour['curatorNote'] ) ? (string) $tour['curatorNote'] : '';
+	$form['curatorName']          = isset( $tour['curatorName'] ) ? (string) $tour['curatorName'] : '';
+	$form['includes_text']        = tam_backend_admin_format_lines( isset( $tour['includes'] ) ? $tour['includes'] : array() );
+	$form['excludes_text']        = tam_backend_admin_format_lines( isset( $tour['excludes'] ) ? $tour['excludes'] : array() );
+	$form['promise_text']         = tam_backend_admin_format_lines( isset( $tour['promiseItems'] ) ? $tour['promiseItems'] : array() );
+	$form['overview_text']        = tam_backend_admin_format_pipe_rows( isset( $tour['overviewCards'] ) ? $tour['overviewCards'] : array(), array( 'title', 'description', 'icon' ) );
+	$form['highlights_text']      = tam_backend_admin_format_pipe_rows( isset( $tour['highlights'] ) ? $tour['highlights'] : array(), array( 'title', 'description', 'icon' ) );
+	$form['itinerary_text']       = tam_backend_admin_format_pipe_rows( isset( $tour['itinerary'] ) ? $tour['itinerary'] : array(), array( 'label', 'title', 'description' ) );
+	$form['imageUrl']             = isset( $tour['imageUrl'] ) ? (string) $tour['imageUrl'] : '';
+	$form['galleryImages']        = tam_backend_admin_normalize_gallery_images( isset( $tour['galleryImages'] ) ? $tour['galleryImages'] : array(), $form['imageUrl'] );
+
+	return $form;
+
 	$form = tam_backend_admin_default_tour_form();
 
 	if ( ! is_array( $tour ) ) {
@@ -462,17 +1050,21 @@ function tam_backend_admin_tour_form_from_tour( $tour ) {
 	$form['departureNote']     = isset( $tour['departureNote'] ) ? (string) $tour['departureNote'] : '';
 	$form['tagline']           = isset( $tour['tagline'] ) ? (string) $tour['tagline'] : '';
 	$form['badge']             = isset( $tour['badge'] ) ? (string) $tour['badge'] : '';
+	$form['featured']          = ! empty( $tour['featured'] ) ? '1' : '0';
 	$form['season']            = isset( $tour['season'] ) ? (string) $tour['season'] : '';
 	$form['departureSchedule'] = isset( $tour['departureSchedule'] ) ? (string) $tour['departureSchedule'] : '';
+	$form['departure_dates_text'] = tam_backend_admin_format_pipe_rows( isset( $tour['departureDates'] ) ? $tour['departureDates'] : array(), array( 'value', 'label' ) );
 	$form['meetingPoint']      = isset( $tour['meetingPoint'] ) ? (string) $tour['meetingPoint'] : '';
 	$form['curatorNote']       = isset( $tour['curatorNote'] ) ? (string) $tour['curatorNote'] : '';
 	$form['curatorName']       = isset( $tour['curatorName'] ) ? (string) $tour['curatorName'] : '';
 	$form['includes_text']     = tam_backend_admin_format_lines( isset( $tour['includes'] ) ? $tour['includes'] : array() );
+	$form['excludes_text']     = tam_backend_admin_format_lines( isset( $tour['excludes'] ) ? $tour['excludes'] : array() );
 	$form['promise_text']      = tam_backend_admin_format_lines( isset( $tour['promiseItems'] ) ? $tour['promiseItems'] : array() );
 	$form['overview_text']     = tam_backend_admin_format_pipe_rows( isset( $tour['overviewCards'] ) ? $tour['overviewCards'] : array(), array( 'title', 'description', 'icon' ) );
 	$form['highlights_text']   = tam_backend_admin_format_pipe_rows( isset( $tour['highlights'] ) ? $tour['highlights'] : array(), array( 'title', 'description', 'icon' ) );
 	$form['itinerary_text']    = tam_backend_admin_format_pipe_rows( isset( $tour['itinerary'] ) ? $tour['itinerary'] : array(), array( 'label', 'title', 'description' ) );
 	$form['imageUrl']          = isset( $tour['imageUrl'] ) ? (string) $tour['imageUrl'] : '';
+	$form['galleryImages']     = tam_backend_admin_normalize_gallery_images( isset( $tour['galleryImages'] ) ? $tour['galleryImages'] : array(), $form['imageUrl'] );
 
 	return $form;
 }
@@ -486,9 +1078,83 @@ function tam_backend_admin_tour_form_from_tour( $tour ) {
 function tam_backend_admin_build_tour_payload( $input ) {
 	$input = is_array( $input ) ? $input : array();
 
+	$overview_rows  = tam_backend_admin_parse_pipe_rows( isset( $input['overview_text'] ) ? $input['overview_text'] : '', array( 'title', 'description', 'icon' ) );
+	$highlight_rows = tam_backend_admin_parse_pipe_rows( isset( $input['highlights_text'] ) ? $input['highlights_text'] : '', array( 'title', 'description', 'icon' ) );
+	$itinerary_rows = tam_backend_admin_parse_pipe_rows( isset( $input['itinerary_text'] ) ? $input['itinerary_text'] : '', array( 'label', 'title', 'description' ) );
+	$departure_rows = tam_backend_admin_parse_pipe_rows( isset( $input['departure_dates_text'] ) ? $input['departure_dates_text'] : '', array( 'value', 'label' ) );
+	$gallery_images = tam_backend_admin_normalize_gallery_images(
+		isset( $input['galleryImages'] ) ? $input['galleryImages'] : array(),
+		isset( $input['imageUrl'] ) ? (string) $input['imageUrl'] : ''
+	);
+	$sanitize_rows  = static function ( $rows, $required_keys ) {
+		$items = array();
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$item      = array();
+			$has_value = false;
+
+			foreach ( $required_keys as $key ) {
+				$value        = isset( $row[ $key ] ) ? sanitize_text_field( $row[ $key ] ) : '';
+				$item[ $key ] = $value;
+				$has_value    = $has_value || '' !== $value;
+			}
+
+			if ( $has_value ) {
+				$items[] = $item;
+			}
+		}
+
+		return $items;
+	};
+
+	if ( empty( $gallery_images ) && ! empty( $input['imageUrl'] ) ) {
+		$gallery_images = array( esc_url_raw( (string) $input['imageUrl'] ) );
+	}
+
+	return array(
+		'title'             => isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : '',
+		'description'       => isset( $input['description'] ) ? sanitize_textarea_field( $input['description'] ) : '',
+		'location'          => isset( $input['location'] ) ? sanitize_text_field( $input['location'] ) : '',
+		'duration'          => isset( $input['duration'] ) ? sanitize_text_field( $input['duration'] ) : '',
+		'durationText'      => isset( $input['durationText'] ) ? sanitize_text_field( $input['durationText'] ) : '',
+		'price'             => isset( $input['price'] ) ? sanitize_text_field( $input['price'] ) : '',
+		'maxPeople'         => isset( $input['maxPeople'] ) ? sanitize_text_field( $input['maxPeople'] ) : '',
+		'status'            => isset( $input['status'] ) ? sanitize_text_field( $input['status'] ) : 'Draft',
+		'transport'         => isset( $input['transport'] ) ? sanitize_text_field( $input['transport'] ) : '',
+		'departureNote'     => isset( $input['departureNote'] ) ? sanitize_text_field( $input['departureNote'] ) : '',
+		'tagline'           => isset( $input['tagline'] ) ? sanitize_text_field( $input['tagline'] ) : '',
+		'badge'             => isset( $input['badge'] ) ? sanitize_text_field( $input['badge'] ) : '',
+		'featured'          => ! empty( $input['featured'] ) && '1' === (string) $input['featured'],
+		'season'            => isset( $input['season'] ) ? sanitize_text_field( $input['season'] ) : '',
+		'departureSchedule' => isset( $input['departureSchedule'] ) ? sanitize_text_field( $input['departureSchedule'] ) : '',
+		'departureDates'    => $sanitize_rows( $departure_rows, array( 'value', 'label' ) ),
+		'meetingPoint'      => isset( $input['meetingPoint'] ) ? sanitize_text_field( $input['meetingPoint'] ) : '',
+		'curatorNote'       => isset( $input['curatorNote'] ) ? sanitize_textarea_field( $input['curatorNote'] ) : '',
+		'curatorName'       => isset( $input['curatorName'] ) ? sanitize_text_field( $input['curatorName'] ) : '',
+		'includes'          => array_map( 'sanitize_text_field', tam_backend_admin_parse_lines( isset( $input['includes_text'] ) ? $input['includes_text'] : '' ) ),
+		'excludes'          => array_map( 'sanitize_text_field', tam_backend_admin_parse_lines( isset( $input['excludes_text'] ) ? $input['excludes_text'] : '' ) ),
+		'promiseItems'      => array_map( 'sanitize_text_field', tam_backend_admin_parse_lines( isset( $input['promise_text'] ) ? $input['promise_text'] : '' ) ),
+		'overviewCards'     => $sanitize_rows( $overview_rows, array( 'title', 'description', 'icon' ) ),
+		'highlights'        => $sanitize_rows( $highlight_rows, array( 'title', 'description', 'icon' ) ),
+		'itinerary'         => $sanitize_rows( $itinerary_rows, array( 'label', 'title', 'description' ) ),
+		'imageUrl'          => ! empty( $gallery_images[0] ) ? $gallery_images[0] : '',
+		'galleryImages'     => ! empty( $gallery_images[0] ) ? array( $gallery_images[0] ) : array(),
+	);
+
+	$input = is_array( $input ) ? $input : array();
+
 	$overview_rows   = tam_backend_admin_parse_pipe_rows( isset( $input['overview_text'] ) ? $input['overview_text'] : '', array( 'title', 'description', 'icon' ) );
 	$highlight_rows  = tam_backend_admin_parse_pipe_rows( isset( $input['highlights_text'] ) ? $input['highlights_text'] : '', array( 'title', 'description', 'icon' ) );
 	$itinerary_rows  = tam_backend_admin_parse_pipe_rows( isset( $input['itinerary_text'] ) ? $input['itinerary_text'] : '', array( 'label', 'title', 'description' ) );
+	$departure_rows  = tam_backend_admin_parse_pipe_rows( isset( $input['departure_dates_text'] ) ? $input['departure_dates_text'] : '', array( 'value', 'label' ) );
+	$gallery_images  = tam_backend_admin_normalize_gallery_images(
+		isset( $input['galleryImages'] ) ? $input['galleryImages'] : array(),
+		isset( $input['imageUrl'] ) ? (string) $input['imageUrl'] : ''
+	);
 	$sanitize_rows   = static function ( $rows, $required_keys ) {
 		$items = array();
 
@@ -514,6 +1180,10 @@ function tam_backend_admin_build_tour_payload( $input ) {
 		return $items;
 	};
 
+	if ( '' === $gallery_images[0] && ! empty( $input['imageUrl'] ) ) {
+		$gallery_images[0] = esc_url_raw( (string) $input['imageUrl'] );
+	}
+
 	return array(
 		'title'             => isset( $input['title'] ) ? sanitize_text_field( $input['title'] ) : '',
 		'description'       => isset( $input['description'] ) ? sanitize_textarea_field( $input['description'] ) : '',
@@ -527,17 +1197,21 @@ function tam_backend_admin_build_tour_payload( $input ) {
 		'departureNote'     => isset( $input['departureNote'] ) ? sanitize_text_field( $input['departureNote'] ) : '',
 		'tagline'           => isset( $input['tagline'] ) ? sanitize_text_field( $input['tagline'] ) : '',
 		'badge'             => isset( $input['badge'] ) ? sanitize_text_field( $input['badge'] ) : '',
+		'featured'          => ! empty( $input['featured'] ) && '1' === (string) $input['featured'],
 		'season'            => isset( $input['season'] ) ? sanitize_text_field( $input['season'] ) : '',
 		'departureSchedule' => isset( $input['departureSchedule'] ) ? sanitize_text_field( $input['departureSchedule'] ) : '',
+		'departureDates'    => $sanitize_rows( $departure_rows, array( 'value', 'label' ) ),
 		'meetingPoint'      => isset( $input['meetingPoint'] ) ? sanitize_text_field( $input['meetingPoint'] ) : '',
 		'curatorNote'       => isset( $input['curatorNote'] ) ? sanitize_textarea_field( $input['curatorNote'] ) : '',
 		'curatorName'       => isset( $input['curatorName'] ) ? sanitize_text_field( $input['curatorName'] ) : '',
 		'includes'          => array_map( 'sanitize_text_field', tam_backend_admin_parse_lines( isset( $input['includes_text'] ) ? $input['includes_text'] : '' ) ),
+		'excludes'          => array_map( 'sanitize_text_field', tam_backend_admin_parse_lines( isset( $input['excludes_text'] ) ? $input['excludes_text'] : '' ) ),
 		'promiseItems'      => array_map( 'sanitize_text_field', tam_backend_admin_parse_lines( isset( $input['promise_text'] ) ? $input['promise_text'] : '' ) ),
 		'overviewCards'     => $sanitize_rows( $overview_rows, array( 'title', 'description', 'icon' ) ),
 		'highlights'        => $sanitize_rows( $highlight_rows, array( 'title', 'description', 'icon' ) ),
 		'itinerary'         => $sanitize_rows( $itinerary_rows, array( 'label', 'title', 'description' ) ),
-		'imageUrl'          => isset( $input['imageUrl'] ) ? esc_url_raw( $input['imageUrl'] ) : '',
+		'imageUrl'          => isset( $gallery_images[0] ) ? $gallery_images[0] : '',
+		'galleryImages'     => $gallery_images,
 	);
 }
 
@@ -580,8 +1254,17 @@ function tam_backend_admin_request( $method, $path, $args = array() ) {
 			'token'             => '',
 			'require_auth'      => true,
 			'clear_on_unauthorised' => true,
+			'_auto_retry'       => false,
 		)
 	);
+
+	if ( ! empty( $args['require_auth'] ) ) {
+		$state = tam_backend_admin_ensure_auto_session();
+
+		if ( is_wp_error( $state ) ) {
+			return tam_backend_admin_error_response( $state->get_error_message(), 500 );
+		}
+	}
 
 	$token = $args['token'] ? trim( (string) $args['token'] ) : tam_backend_admin_get_token();
 
@@ -605,6 +1288,15 @@ function tam_backend_admin_request( $method, $path, $args = array() ) {
 
 	if ( 401 === (int) $response['status'] && ! empty( $args['clear_on_unauthorised'] ) ) {
 		tam_backend_admin_clear_session();
+
+		if ( ! empty( $args['require_auth'] ) && empty( $args['_auto_retry'] ) ) {
+			$reconnect = tam_backend_admin_ensure_auto_session( true );
+
+			if ( ! is_wp_error( $reconnect ) ) {
+				$args['_auto_retry'] = true;
+				return tam_backend_admin_request( $method, $path, $args );
+			}
+		}
 	}
 
 	return $response;
@@ -616,10 +1308,16 @@ function tam_backend_admin_request( $method, $path, $args = array() ) {
  * @param string $method HTTP method.
  * @param string $path   API path relative to /api.
  * @param array  $body   Payload array.
- * @param array  $file   Uploaded file info from $_FILES.
+ * @param array  $files  Uploaded files keyed by backend field name.
  * @return array
  */
-function tam_backend_admin_request_multipart( $method, $path, $body, $file ) {
+function tam_backend_admin_request_multipart( $method, $path, $body, $files ) {
+	$state = tam_backend_admin_ensure_auto_session();
+
+	if ( is_wp_error( $state ) ) {
+		return tam_backend_admin_error_response( $state->get_error_message(), 500 );
+	}
+
 	$token = tam_backend_admin_get_token();
 
 	if ( '' === $token ) {
@@ -636,13 +1334,19 @@ function tam_backend_admin_request_multipart( $method, $path, $body, $file ) {
 	$eol      = "\r\n";
 	$payload  = '';
 	$body     = is_array( $body ) ? $body : array();
-	$file     = is_array( $file ) ? $file : array();
+	$files    = is_array( $files ) ? $files : array();
 
 	$payload .= '--' . $boundary . $eol;
 	$payload .= 'Content-Disposition: form-data; name="payload"' . $eol . $eol;
 	$payload .= wp_json_encode( $body ) . $eol;
 
-	if ( ! empty( $file['tmp_name'] ) && is_readable( $file['tmp_name'] ) ) {
+	foreach ( $files as $field_name => $file ) {
+		$file = is_array( $file ) ? $file : array();
+
+		if ( empty( $file['tmp_name'] ) || ! is_readable( $file['tmp_name'] ) ) {
+			continue;
+		}
+
 		$file_contents = file_get_contents( $file['tmp_name'] );
 
 		if ( false === $file_contents ) {
@@ -653,7 +1357,7 @@ function tam_backend_admin_request_multipart( $method, $path, $body, $file ) {
 		$file_type = ! empty( $file['type'] ) ? sanitize_text_field( $file['type'] ) : 'application/octet-stream';
 
 		$payload .= '--' . $boundary . $eol;
-		$payload .= 'Content-Disposition: form-data; name="image"; filename="' . $file_name . '"' . $eol;
+		$payload .= 'Content-Disposition: form-data; name="' . preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $field_name ) . '"; filename="' . $file_name . '"' . $eol;
 		$payload .= 'Content-Type: ' . $file_type . $eol . $eol;
 		$payload .= $file_contents . $eol;
 	}
@@ -730,6 +1434,12 @@ function tam_backend_admin_refresh_profile() {
  */
 function tam_backend_admin_render_connection_pill( $profile ) {
 	if ( empty( $profile['email'] ) ) {
+		return '<span class="tam-admin-pill tam-admin-pill--warning">' . esc_html__( 'Backend can kiem tra', 'travel-agency-modern' ) . '</span>';
+	}
+
+	return '<span class="tam-admin-pill tam-admin-pill--success">' . esc_html__( 'Backend tu dong ket noi', 'travel-agency-modern' ) . '</span>';
+
+	if ( empty( $profile['email'] ) ) {
 		return '<span class="tam-admin-pill tam-admin-pill--warning">' . esc_html__( 'Chưa kết nối backend', 'travel-agency-modern' ) . '</span>';
 	}
 
@@ -749,8 +1459,15 @@ function tam_backend_admin_sidebar_pages() {
 		'tam-admin-users',
 		'tam-admin-reviews',
 		'tam-admin-payments',
-		'tam-admin-sync',
-		'tam-admin-connect',
+	);
+
+	return array(
+		'tam-admin-dashboard',
+		'tam-admin-tours',
+		'tam-admin-bookings',
+		'tam-admin-users',
+		'tam-admin-reviews',
+		'tam-admin-payments',
 	);
 }
 
@@ -814,6 +1531,8 @@ function tam_backend_admin_hide_legacy_menus() {
 
 	remove_submenu_page( 'tools.php', 'tam-backend-bookings' );
 	remove_submenu_page( 'tools.php', 'tam-sync-tours-api' );
+	remove_submenu_page( TAM_BACKEND_ADMIN_MENU_SLUG, 'tam-admin-sync' );
+	remove_submenu_page( TAM_BACKEND_ADMIN_MENU_SLUG, 'tam-admin-connect' );
 	remove_menu_page( 'edit.php?post_type=tour' );
 	remove_submenu_page( 'edit.php?post_type=tour', 'post-new.php?post_type=tour' );
 	remove_submenu_page( 'edit.php?post_type=tour', 'edit-tags.php?taxonomy=tour_destination&post_type=tour' );
@@ -982,18 +1701,34 @@ function tam_backend_admin_route_page() {
 		case 'tam-admin-payments':
 			tam_backend_admin_render_payments_page();
 			break;
-		case 'tam-admin-sync':
-			tam_backend_admin_render_sync_page();
-			break;
-		case 'tam-admin-connect':
-			tam_backend_admin_render_connect_page();
-			break;
 		case 'tam-admin-dashboard':
 		default:
 			tam_backend_admin_render_dashboard_page();
 			break;
 	}
 }
+
+/**
+ * Redirect removed admin utility pages back to the dashboard.
+ *
+ * @return void
+ */
+function tam_backend_admin_redirect_removed_pages() {
+	if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$page = tam_backend_admin_current_page();
+
+	if ( in_array( $page, array( 'tam-admin-sync', 'tam-admin-connect' ), true ) ) {
+		tam_backend_admin_redirect_notice(
+			TAM_BACKEND_ADMIN_MENU_SLUG,
+			__( 'Chuc nang nay da duoc go khoi khu quan tri WordPress.', 'travel-agency-modern' ),
+			'warning'
+		);
+	}
+}
+add_action( 'admin_init', 'tam_backend_admin_redirect_removed_pages' );
 
 /**
  * Ensure the current screen can use the custom admin shell.
@@ -1012,6 +1747,12 @@ function tam_backend_admin_require_access( $page_slug ) {
 
 	if ( ! $is_protected ) {
 		return true;
+	}
+
+	$state = tam_backend_admin_ensure_auto_session();
+
+	if ( is_wp_error( $state ) ) {
+		return false;
 	}
 
 	if ( tam_backend_admin_is_connected() ) {
@@ -1043,19 +1784,36 @@ function tam_backend_admin_render_shell( $page_slug, $renderer ) {
 	echo '<p class="tam-admin-topbar__eyebrow">' . esc_html__( 'ADN Travel / WordPress Admin', 'travel-agency-modern' ) . '</p>';
 	echo '<h2>' . esc_html( (string) $config['label'] ) . '</h2>';
 	echo '</div>';
-	echo '<div class="tam-admin-topbar__actions">';
+	if ( false ) {
+		echo '<div class="tam-admin-topbar__actions">';
 	echo '<div class="tam-admin-topbar__profile">';
 	echo '<strong>' . esc_html( $profile['name'] ? $profile['name'] : __( 'Admin', 'travel-agency-modern' ) ) . '</strong>';
 	echo '<span>' . esc_html( $profile['email'] ? $profile['email'] : __( 'Chưa có email', 'travel-agency-modern' ) ) . '</span>';
 	echo '</div>';
 	echo wp_kses_post( tam_backend_admin_render_connection_pill( tam_backend_admin_get_profile() ) );
-	echo '<a class="button button-secondary" href="' . esc_url( tam_backend_admin_page_url( 'tam-admin-connect' ) ) . '">' . esc_html__( 'Backend Connect', 'travel-agency-modern' ) . '</a>';
-	echo '</div>';
+		echo '</div>';
+	}
 	echo '</header>';
 
 	tam_backend_admin_render_notices();
 
 	if ( ! $has_access ) {
+		$error       = tam_backend_admin_get_runtime_connection_error();
+		$description = $error instanceof WP_Error
+			? $error->get_error_message()
+			: __( 'WordPress admin chua the dong bo tai khoan backend tu dong. Hay kiem tra backend-api/.env, JWT_SECRET va database backend.', 'travel-agency-modern' );
+
+		tam_backend_admin_render_empty_state(
+			__( 'Khong the dong bo admin backend', 'travel-agency-modern' ),
+			$description,
+			tam_backend_admin_page_url( 'tam-admin-connect' ),
+			__( 'Xem trang thai backend', 'travel-agency-modern' )
+		);
+		echo '</main>';
+		echo '</div>';
+		echo '</div>';
+		return;
+
 		tam_backend_admin_render_empty_state(
 			__( 'Cần kết nối backend admin', 'travel-agency-modern' ),
 			__( 'Trang quản trị này dùng dữ liệu thật từ backend API. Hãy đăng nhập backend admin trước để tải dashboard, tours, bookings, payments, reviews và users.', 'travel-agency-modern' ),
@@ -1137,12 +1895,12 @@ function tam_backend_admin_get_tour( $tour_id ) {
  * Create a tour in the backend and sync the mirrored WordPress post.
  *
  * @param array $payload Backend payload.
- * @param array $file    Uploaded file info.
+ * @param array $files   Uploaded files keyed by backend field name.
  * @return array
  */
-function tam_backend_admin_create_tour( $payload, $file = array() ) {
-	$response = ! empty( $file['tmp_name'] )
-		? tam_backend_admin_request_multipart( 'POST', 'tours', $payload, $file )
+function tam_backend_admin_create_tour( $payload, $files = array() ) {
+	$response = tam_backend_admin_has_tour_uploads( $files )
+		? tam_backend_admin_request_multipart( 'POST', 'tours', $payload, $files )
 		: tam_backend_admin_request( 'POST', 'tours', array( 'body' => $payload ) );
 
 	if ( $response['success'] && ! empty( $response['data']['tour'] ) && is_array( $response['data']['tour'] ) ) {
@@ -1162,12 +1920,12 @@ function tam_backend_admin_create_tour( $payload, $file = array() ) {
  *
  * @param int   $tour_id Backend tour ID.
  * @param array $payload Backend payload.
- * @param array $file    Uploaded file info.
+ * @param array $files   Uploaded files keyed by backend field name.
  * @return array
  */
-function tam_backend_admin_update_tour( $tour_id, $payload, $file = array() ) {
-	$response = ! empty( $file['tmp_name'] )
-		? tam_backend_admin_request_multipart( 'PUT', 'tours/' . (int) $tour_id, $payload, $file )
+function tam_backend_admin_update_tour( $tour_id, $payload, $files = array() ) {
+	$response = tam_backend_admin_has_tour_uploads( $files )
+		? tam_backend_admin_request_multipart( 'PUT', 'tours/' . (int) $tour_id, $payload, $files )
 		: tam_backend_admin_request( 'PUT', 'tours/' . (int) $tour_id, array( 'body' => $payload ) );
 
 	if ( $response['success'] && ! empty( $response['data']['tour'] ) && is_array( $response['data']['tour'] ) ) {
@@ -1823,6 +2581,369 @@ function tam_backend_admin_render_field( $name, $label, $value, $args = array(),
 }
 
 /**
+ * Render the primary image card for the admin tour form.
+ *
+ * @param array $form    Current form values.
+ * @param array $errors  Validation errors.
+ * @param int   $tour_id Current backend tour ID.
+ * @return void
+ */
+function tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id = 0 ) {
+	$form          = wp_parse_args( is_array( $form ) ? $form : array(), tam_backend_admin_default_tour_form() );
+	$errors        = is_array( $errors ) ? $errors : array();
+	$current_image = '';
+	$error_message = '';
+	$input_class   = 'tam-admin-tour-image__input';
+	$gallery       = tam_backend_admin_normalize_gallery_images(
+		isset( $form['galleryImages'] ) ? $form['galleryImages'] : array(),
+		isset( $form['imageUrl'] ) ? (string) $form['imageUrl'] : ''
+	);
+
+	if ( ! empty( $gallery[0] ) ) {
+		$current_image = tam_backend_api_resolve_asset_url( $gallery[0] );
+	}
+
+	if ( ! $current_image && ! empty( $form['imageUrl'] ) ) {
+		$current_image = tam_backend_api_resolve_asset_url( (string) $form['imageUrl'] );
+	}
+
+	if ( ! empty( $errors['imageUrl'] ) ) {
+		$error_message = (string) $errors['imageUrl'];
+	} elseif ( ! empty( $errors['tour_image'] ) ) {
+		$error_message = (string) $errors['tour_image'];
+	}
+
+	$wrapper_class = 'tam-admin-tour-image';
+
+	if ( '' !== $error_message ) {
+		$wrapper_class .= ' tam-admin-tour-image--error';
+		$input_class   .= ' is-error';
+	}
+
+	echo '<section class="' . esc_attr( $wrapper_class ) . '" data-tam-tour-image>';
+	echo '<div class="tam-admin-tour-image__head">';
+	echo '<span class="tam-admin-tour-image__eyebrow">' . esc_html__( 'Ảnh chính', 'travel-agency-modern' ) . '</span>';
+	echo '<h4>' . esc_html__( 'Ảnh cover dùng cho đầu trang chi tiết tour', 'travel-agency-modern' ) . '</h4>';
+	echo '<p>' . esc_html__( 'Form tour và trang chi tiết giờ dùng chung một ảnh chính. Ảnh này sẽ là ảnh hiển thị duy nhất ở phần đầu của tour.', 'travel-agency-modern' ) . '</p>';
+	echo '</div>';
+	echo '<input type="hidden" name="tour[imageUrl]" value="' . esc_attr( $form['imageUrl'] ) . '" />';
+	echo '<div class="tam-admin-tour-image__layout">';
+	echo '<div class="tam-admin-tour-image__preview" data-tam-tour-image-frame>';
+	echo '<img class="tam-admin-tour-image__preview-image" data-tam-tour-image-preview src="' . esc_url( $current_image ) . '" alt="' . esc_attr__( 'Ảnh chính tour', 'travel-agency-modern' ) . '" data-existing-src="' . esc_attr( $current_image ) . '"' . ( $current_image ? '' : ' hidden' ) . ' />';
+	echo '<div class="tam-admin-tour-image__placeholder" data-tam-tour-image-placeholder' . ( $current_image ? ' hidden' : '' ) . '>';
+	echo '<span class="dashicons dashicons-format-image" aria-hidden="true"></span>';
+	echo '<strong>' . esc_html__( 'Chưa có ảnh chính', 'travel-agency-modern' ) . '</strong>';
+	echo '<p>' . esc_html__( 'Chọn một ảnh rõ, ngang và đủ lớn để dùng làm cover của trang chi tiết tour.', 'travel-agency-modern' ) . '</p>';
+	echo '</div>';
+	echo '</div>';
+	echo '<div class="tam-admin-tour-image__panel">';
+	echo '<label class="tam-admin-tour-image__picker" for="tam-tour-image-input">';
+	echo '<span>' . esc_html__( 'Tải ảnh chính', 'travel-agency-modern' ) . '</span>';
+	echo '<input id="tam-tour-image-input" class="' . esc_attr( $input_class ) . '" type="file" name="tour_image" accept=".jpg,.jpeg,.png,.webp" data-tam-tour-image-input />';
+	echo '</label>';
+
+	if ( $current_image ) {
+		echo '<a class="tam-admin-tour-image__link" href="' . esc_url( $current_image ) . '" target="_blank" rel="noopener">' . esc_html__( 'Mở ảnh hiện tại', 'travel-agency-modern' ) . '</a>';
+	}
+
+	if ( '' !== $error_message ) {
+		echo '<small class="tam-admin-field__error">' . esc_html( $error_message ) . '</small>';
+	} else {
+		echo '<small>' . esc_html__( 'Nếu không đổi ảnh khi sửa tour, hệ thống sẽ giữ nguyên ảnh hiện tại.', 'travel-agency-modern' ) . '</small>';
+	}
+
+	echo '</div>';
+	echo '</div>';
+	echo '</section>';
+	return;
+
+	$form          = wp_parse_args( is_array( $form ) ? $form : array(), tam_backend_admin_default_tour_form() );
+	$errors        = is_array( $errors ) ? $errors : array();
+	$gallery_images = tam_backend_admin_normalize_gallery_images(
+		isset( $form['galleryImages'] ) ? $form['galleryImages'] : array(),
+		isset( $form['imageUrl'] ) ? (string) $form['imageUrl'] : ''
+	);
+	$form['galleryImages'] = $gallery_images;
+	$form['imageUrl']      = isset( $gallery_images[0] ) ? $gallery_images[0] : '';
+	$slots                 = tam_backend_admin_get_tour_upload_slots();
+	$has_error             = false;
+
+	foreach ( array( 'imageUrl', 'tour_image_main', 'tour_image_1', 'tour_image_2', 'tour_image_3' ) as $error_key ) {
+		if ( ! empty( $errors[ $error_key ] ) ) {
+			$has_error = true;
+			break;
+		}
+	}
+
+	$render_slot = static function ( $slot_index, $backend_field, $is_primary = false ) use ( $form, $errors, $slots ) {
+		$slot          = isset( $slots[ $backend_field ] ) ? $slots[ $backend_field ] : array();
+		$label         = isset( $slot['label'] ) ? (string) $slot['label'] : __( 'Ảnh tour', 'travel-agency-modern' );
+		$input_name    = isset( $slot['input_name'] ) ? (string) $slot['input_name'] : '';
+		$error_key     = isset( $slot['error_key'] ) ? (string) $slot['error_key'] : $backend_field;
+		$current_image = isset( $form['galleryImages'][ $slot_index ] ) ? tam_backend_api_resolve_asset_url( $form['galleryImages'][ $slot_index ] ) : '';
+		$error_message = '';
+
+		if ( $is_primary && ! empty( $errors['imageUrl'] ) ) {
+			$error_message = (string) $errors['imageUrl'];
+		} elseif ( ! empty( $errors[ $error_key ] ) ) {
+			$error_message = (string) $errors[ $error_key ];
+		}
+
+		$slot_classes = array( 'tam-admin-tour-slot' );
+		$input_class  = 'tam-admin-tour-slot__input';
+
+		if ( $is_primary ) {
+			$slot_classes[] = 'tam-admin-tour-slot--hero';
+		}
+
+		if ( '' !== $error_message ) {
+			$slot_classes[] = 'is-error';
+			$input_class   .= ' is-error';
+		}
+
+		echo '<article class="' . esc_attr( implode( ' ', $slot_classes ) ) . '" data-tam-tour-slot>';
+		echo '<div class="tam-admin-tour-slot__preview" data-tam-tour-slot-frame>';
+		echo '<img class="tam-admin-tour-slot__preview-image" data-tam-tour-slot-preview src="' . esc_url( $current_image ) . '" alt="' . esc_attr( $label ) . '" data-existing-src="' . esc_attr( $current_image ) . '"' . ( $current_image ? '' : ' hidden' ) . ' />';
+		echo '<div class="tam-admin-tour-slot__placeholder" data-tam-tour-slot-placeholder' . ( $current_image ? ' hidden' : '' ) . '>';
+		echo '<span class="dashicons dashicons-format-image" aria-hidden="true"></span>';
+		echo '<strong>' . esc_html( $label ) . '</strong>';
+		echo '<p>' . esc_html( $is_primary ? __( 'Ảnh này sẽ nằm ở vị trí cover đầu trang chi tiết.', 'travel-agency-modern' ) : __( 'Ô ảnh phụ tương ứng với dãy thumbnail của trang chi tiết.', 'travel-agency-modern' ) ) . '</p>';
+		echo '</div>';
+		echo '</div>';
+		echo '<div class="tam-admin-tour-slot__body">';
+		echo '<div class="tam-admin-tour-slot__label-group">';
+		echo '<strong>' . esc_html( $label ) . '</strong>';
+		echo '<span>' . esc_html( $is_primary ? __( 'Bắt buộc cho tour mới', 'travel-agency-modern' ) : __( 'Tùy chọn', 'travel-agency-modern' ) ) . '</span>';
+		echo '</div>';
+		echo '<input class="' . esc_attr( $input_class ) . '" type="file" name="' . esc_attr( $input_name ) . '" accept=".jpg,.jpeg,.png,.webp" data-tam-tour-slot-input />';
+
+		if ( $current_image ) {
+			echo '<a class="tam-admin-tour-slot__link" href="' . esc_url( $current_image ) . '" target="_blank" rel="noopener">' . esc_html__( 'Mở ảnh hiện tại', 'travel-agency-modern' ) . '</a>';
+		}
+
+		if ( '' !== $error_message ) {
+			echo '<small class="tam-admin-field__error">' . esc_html( $error_message ) . '</small>';
+		} else {
+			echo '<small>' . esc_html( $is_primary ? __( 'Nếu không đổi ảnh khi sửa tour, hệ thống sẽ giữ ảnh hiện tại.', 'travel-agency-modern' ) : __( 'Có thể để trống nếu tour chưa cần đủ 4 ảnh.', 'travel-agency-modern' ) ) . '</small>';
+		}
+
+		echo '</div>';
+		echo '</article>';
+	};
+
+	echo '<section class="tam-admin-tour-gallery' . ( $has_error ? ' tam-admin-tour-gallery--error' : '' ) . '">';
+	echo '<div class="tam-admin-tour-gallery__head">';
+	echo '<div>';
+	echo '<span class="tam-admin-tour-gallery__eyebrow">' . esc_html__( 'Gallery ảnh', 'travel-agency-modern' ) . '</span>';
+	echo '<h4>' . esc_html__( 'Ảnh chính và 3 ảnh phụ cho trang chi tiết tour', 'travel-agency-modern' ) . '</h4>';
+	echo '<p>' . esc_html__( 'Form này bám theo đúng format của gallery đầu trang chi tiết: 1 ảnh lớn phía trên và 3 thumbnail phụ phía dưới.', 'travel-agency-modern' ) . '</p>';
+	echo '</div>';
+	echo '</div>';
+	echo '<input type="hidden" name="tour[imageUrl]" value="' . esc_attr( $form['imageUrl'] ) . '" />';
+
+	foreach ( $gallery_images as $slot_index => $image_url ) {
+		echo '<input type="hidden" name="tour[galleryImages][' . esc_attr( (string) $slot_index ) . ']" value="' . esc_attr( $image_url ) . '" />';
+	}
+
+	echo '<div class="tam-admin-tour-gallery__layout">';
+	$render_slot( 0, 'image', true );
+	echo '<div class="tam-admin-tour-gallery__thumbs">';
+	$render_slot( 1, 'galleryImage1' );
+	$render_slot( 2, 'galleryImage2' );
+	$render_slot( 3, 'galleryImage3' );
+	echo '</div>';
+	echo '</div>';
+	echo '</section>';
+}
+
+/**
+ * Render the full create/edit tour form layout.
+ *
+ * @param array  $form          Form state.
+ * @param array  $errors        Validation errors.
+ * @param int    $tour_id       Tour ID being edited.
+ * @param string $general_error Optional non-field error.
+ * @return void
+ */
+function tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id = 0, $general_error = '' ) {
+	$form                   = wp_parse_args( is_array( $form ) ? $form : array(), tam_backend_admin_default_tour_form() );
+	$form['galleryImages']  = tam_backend_admin_normalize_gallery_images(
+		isset( $form['galleryImages'] ) ? $form['galleryImages'] : array(),
+		isset( $form['imageUrl'] ) ? (string) $form['imageUrl'] : ''
+	);
+	$form['imageUrl']       = ! empty( $form['galleryImages'][0] ) ? $form['galleryImages'][0] : (string) $form['imageUrl'];
+
+	echo '<section class="tam-admin-card">';
+	echo '<div class="tam-admin-card__head"><h3>' . esc_html( $tour_id > 0 ? __( 'Chỉnh sửa tour', 'travel-agency-modern' ) : __( 'Tạo tour mới', 'travel-agency-modern' ) ) . '</h3><a class="button button-secondary" href="' . esc_url( tam_backend_admin_page_url( 'tam-admin-tours' ) ) . '">' . esc_html__( 'Quay lại danh sách', 'travel-agency-modern' ) . '</a></div>';
+
+	if ( ! empty( $errors ) ) {
+		echo '<div class="tam-admin-form-alert tam-admin-form-alert--error">';
+		echo '<strong>' . esc_html__( 'Hãy kiểm tra các trường được tô đỏ.', 'travel-agency-modern' ) . '</strong>';
+		echo '<span>' . esc_html__( 'Các lỗi nhập liệu đã được đánh dấu ngay trong form để bạn sửa nhanh hơn.', 'travel-agency-modern' ) . '</span>';
+		echo '</div>';
+	} elseif ( '' !== $general_error ) {
+		echo '<div class="tam-admin-form-alert tam-admin-form-alert--error">';
+		echo '<strong>' . esc_html( $general_error ) . '</strong>';
+		echo '</div>';
+	}
+
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" enctype="multipart/form-data" class="tam-admin-stack">';
+	wp_nonce_field( 'tam_backend_admin_tour_save', 'tam_backend_admin_tour_nonce' );
+	echo '<input type="hidden" name="action" value="tam_backend_admin_tour_save" />';
+	echo '<input type="hidden" name="tour_id" value="' . esc_attr( $tour_id ) . '" />';
+	echo '<input type="hidden" name="tour[status]" value="' . esc_attr( $form['status'] ) . '" />';
+	echo '<input type="hidden" name="tour[tagline]" value="' . esc_attr( $form['tagline'] ) . '" />';
+	echo '<input type="hidden" name="tour[badge]" value="' . esc_attr( $form['badge'] ) . '" />';
+	echo '<input type="hidden" name="tour[featured]" value="' . esc_attr( $form['featured'] ) . '" />';
+	echo '<input type="hidden" name="tour[curatorName]" value="' . esc_attr( $form['curatorName'] ) . '" />';
+	echo '<input type="hidden" name="tour[curatorNote]" value="' . esc_attr( $form['curatorNote'] ) . '" />';
+	echo '<input type="hidden" name="tour[promise_text]" value="' . esc_attr( $form['promise_text'] ) . '" />';
+	echo '<input type="hidden" name="tour[overview_text]" value="' . esc_attr( $form['overview_text'] ) . '" />';
+	tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id );
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Thông tin nhanh', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Những thông tin xuất hiện ngay phần đầu của tour chi tiết', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'title', __( 'Tên tour', 'travel-agency-modern' ), $form['title'], array( 'placeholder' => __( 'Ví dụ: Vịnh Hạ Long Premium', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'location', __( 'Địa điểm', 'travel-agency-modern' ), $form['location'], array( 'placeholder' => __( 'Ví dụ: Quảng Ninh', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'price', __( 'Giá', 'travel-agency-modern' ), $form['price'], array( 'type' => 'number', 'placeholder' => '4500000' ), $errors );
+	tam_backend_admin_render_field( 'duration', __( 'Số ngày', 'travel-agency-modern' ), $form['duration'], array( 'type' => 'number', 'placeholder' => '3' ), $errors );
+	tam_backend_admin_render_field( 'durationText', __( 'Nhãn thời lượng', 'travel-agency-modern' ), $form['durationText'], array( 'placeholder' => __( 'Ví dụ: 3 ngày 2 đêm', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'transport', __( 'Phương tiện', 'travel-agency-modern' ), $form['transport'], array( 'placeholder' => __( 'Máy bay / xe du lịch', 'travel-agency-modern' ) ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Điểm đặt chỗ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Thông tin xuất hiện ở box đặt tour và lịch khởi hành', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'meetingPoint', __( 'Điểm tập trung', 'travel-agency-modern' ), $form['meetingPoint'], array( 'placeholder' => __( 'Sân bay Nội Bài', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'departureNote', __( 'Điểm khởi hành / ghi chú đón khách', 'travel-agency-modern' ), $form['departureNote'], array( 'placeholder' => __( 'Khởi hành từ Hà Nội', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'season', __( 'Mùa đẹp', 'travel-agency-modern' ), $form['season'], array( 'placeholder' => __( 'Tháng 10 - 3', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'maxPeople', __( 'Số khách tối đa', 'travel-agency-modern' ), $form['maxPeople'], array( 'type' => 'number', 'placeholder' => '18' ), $errors );
+	tam_backend_admin_render_field( 'departureSchedule', __( 'Lịch khởi hành tổng quát', 'travel-agency-modern' ), $form['departureSchedule'], array( 'placeholder' => __( 'Mỗi thứ Sáu hàng tuần', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'departure_dates_text', __( 'Danh sách ngày khởi hành', 'travel-agency-modern' ), $form['departure_dates_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: YYYY-MM-DD | Nhãn hiển thị cho dropdown ngày đi.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Mô tả & điểm nổi bật', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Phần giới thiệu ngắn và các điểm nhấn của hành trình', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'description', __( 'Mô tả tour', 'travel-agency-modern' ), $form['description'], array( 'type' => 'textarea', 'rows' => 6, 'full' => true ), $errors );
+	tam_backend_admin_render_field( 'highlights_text', __( 'Điểm nổi bật', 'travel-agency-modern' ), $form['highlights_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: tiêu đề | mô tả | icon', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Lịch trình', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Các chặng hiển thị theo từng ngày ở trang chi tiết', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'itinerary_text', __( 'Các chặng theo ngày', 'travel-agency-modern' ), $form['itinerary_text'], array( 'type' => 'textarea', 'rows' => 7, 'help' => __( 'Mỗi dòng: nhãn ngày | tiêu đề | mô tả', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Dịch vụ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Những gì đã bao gồm và chưa bao gồm trong giá tour', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'includes_text', __( 'Bao gồm', 'travel-agency-modern' ), $form['includes_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng là một hạng mục bao gồm.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	tam_backend_admin_render_field( 'excludes_text', __( 'Không bao gồm', 'travel-agency-modern' ), $form['excludes_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng là một hạng mục chưa bao gồm.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+	echo '<div class="tam-admin-actions"><button type="submit" class="button button-primary">' . esc_html( $tour_id > 0 ? __( 'Lưu tour', 'travel-agency-modern' ) : __( 'Tạo tour', 'travel-agency-modern' ) ) . '</button></div>';
+	echo '</form>';
+	echo '</section>';
+	return;
+
+	$form          = wp_parse_args( is_array( $form ) ? $form : array(), tam_backend_admin_default_tour_form() );
+	$form['galleryImages'] = tam_backend_admin_normalize_gallery_images(
+		isset( $form['galleryImages'] ) ? $form['galleryImages'] : array(),
+		isset( $form['imageUrl'] ) ? (string) $form['imageUrl'] : ''
+	);
+	$form['imageUrl'] = isset( $form['galleryImages'][0] ) ? $form['galleryImages'][0] : '';
+
+	echo '<section class="tam-admin-card">';
+	echo '<div class="tam-admin-card__head"><h3>' . esc_html( $tour_id > 0 ? __( 'Chỉnh sửa tour', 'travel-agency-modern' ) : __( 'Tạo tour mới', 'travel-agency-modern' ) ) . '</h3><a class="button button-secondary" href="' . esc_url( tam_backend_admin_page_url( 'tam-admin-tours' ) ) . '">' . esc_html__( 'Quay lại danh sách', 'travel-agency-modern' ) . '</a></div>';
+
+	if ( ! empty( $errors ) ) {
+		echo '<div class="tam-admin-form-alert tam-admin-form-alert--error">';
+		echo '<strong>' . esc_html__( 'Hãy kiểm tra các trường được tô đỏ.', 'travel-agency-modern' ) . '</strong>';
+		echo '<span>' . esc_html__( 'Những dữ liệu chưa hợp lệ đã được đánh dấu ngay trong form để bạn sửa nhanh hơn.', 'travel-agency-modern' ) . '</span>';
+		echo '</div>';
+	} elseif ( '' !== $general_error ) {
+		echo '<div class="tam-admin-form-alert tam-admin-form-alert--error">';
+		echo '<strong>' . esc_html( $general_error ) . '</strong>';
+		echo '</div>';
+	}
+
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" enctype="multipart/form-data" class="tam-admin-stack">';
+	wp_nonce_field( 'tam_backend_admin_tour_save', 'tam_backend_admin_tour_nonce' );
+	echo '<input type="hidden" name="action" value="tam_backend_admin_tour_save" />';
+	echo '<input type="hidden" name="tour_id" value="' . esc_attr( $tour_id ) . '" />';
+	tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id );
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Thông tin nhanh', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Các thông tin xuất hiện nổi bật ở đầu trang tour', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'title', __( 'Tên tour', 'travel-agency-modern' ), $form['title'], array( 'placeholder' => __( 'Ví dụ: Vịnh Hạ Long Premium', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'location', __( 'Địa điểm', 'travel-agency-modern' ), $form['location'], array( 'placeholder' => __( 'Ví dụ: Quảng Ninh', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'price', __( 'Giá', 'travel-agency-modern' ), $form['price'], array( 'type' => 'number', 'placeholder' => '4500000' ), $errors );
+	tam_backend_admin_render_field( 'duration', __( 'Số ngày', 'travel-agency-modern' ), $form['duration'], array( 'type' => 'number', 'placeholder' => '3' ), $errors );
+	tam_backend_admin_render_field( 'durationText', __( 'Nhãn thời lượng', 'travel-agency-modern' ), $form['durationText'], array( 'placeholder' => __( 'Ví dụ: 3 ngày 2 đêm', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'transport', __( 'Phương tiện', 'travel-agency-modern' ), $form['transport'], array( 'placeholder' => __( 'Máy bay / xe du lịch', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'status', __( 'Trạng thái', 'travel-agency-modern' ), $form['status'], array( 'type' => 'select', 'options' => array( 'Draft' => 'Draft', 'Active' => 'Active', 'Closed' => 'Closed' ) ), $errors );
+	tam_backend_admin_render_field( 'tagline', __( 'Tagline ngắn', 'travel-agency-modern' ), $form['tagline'], array( 'placeholder' => __( 'Ngắm vịnh trên du thuyền 5 sao', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'badge', __( 'Badge nổi bật', 'travel-agency-modern' ), $form['badge'], array( 'placeholder' => __( 'Bestseller / Limited', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'curatorName', __( 'Người phụ trách', 'travel-agency-modern' ), $form['curatorName'], array( 'placeholder' => __( 'Tên chuyên viên', 'travel-agency-modern' ) ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Điểm đặt chỗ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Các thông tin điều phối và lựa chọn ngày đi', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'meetingPoint', __( 'Điểm tập trung', 'travel-agency-modern' ), $form['meetingPoint'], array( 'placeholder' => __( 'Sân bay Nội Bài', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'departureNote', __( 'Ghi chú khởi hành', 'travel-agency-modern' ), $form['departureNote'], array( 'placeholder' => __( 'Khởi hành từ Hà Nội', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'season', __( 'Mùa đẹp', 'travel-agency-modern' ), $form['season'], array( 'placeholder' => __( 'Tháng 10 - 3', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'maxPeople', __( 'Số khách tối đa', 'travel-agency-modern' ), $form['maxPeople'], array( 'type' => 'number', 'placeholder' => '18' ), $errors );
+	tam_backend_admin_render_field( 'departureSchedule', __( 'Lịch khởi hành tổng quát', 'travel-agency-modern' ), $form['departureSchedule'], array( 'placeholder' => __( 'Mỗi thứ Sáu hàng tuần', 'travel-agency-modern' ) ), $errors );
+	tam_backend_admin_render_field( 'featured', __( 'Tour nổi bật', 'travel-agency-modern' ), $form['featured'], array( 'type' => 'select', 'options' => array( '0' => __( 'Không', 'travel-agency-modern' ), '1' => __( 'Có', 'travel-agency-modern' ) ) ), $errors );
+	tam_backend_admin_render_field( 'departure_dates_text', __( 'Danh sách ngày khởi hành', 'travel-agency-modern' ), $form['departure_dates_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: YYYY-MM-DD | Nhãn hiển thị cho dropdown ngày đi.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Mô tả & điểm nổi bật', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Nội dung chính mà khách sẽ đọc trên trang chi tiết', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'description', __( 'Mô tả tour', 'travel-agency-modern' ), $form['description'], array( 'type' => 'textarea', 'rows' => 6, 'full' => true ), $errors );
+	tam_backend_admin_render_field( 'highlights_text', __( 'Điểm nổi bật', 'travel-agency-modern' ), $form['highlights_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: tiêu đề | mô tả | icon', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Lịch trình', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Từng ngày của chuyến đi', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'itinerary_text', __( 'Các chặng theo ngày', 'travel-agency-modern' ), $form['itinerary_text'], array( 'type' => 'textarea', 'rows' => 7, 'help' => __( 'Mỗi dòng: nhãn ngày | tiêu đề | mô tả', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Dịch vụ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Những gì đã bao gồm và chưa bao gồm', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'includes_text', __( 'Bao gồm', 'travel-agency-modern' ), $form['includes_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng là một hạng mục bao gồm.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	tam_backend_admin_render_field( 'excludes_text', __( 'Không bao gồm', 'travel-agency-modern' ), $form['excludes_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng là một hạng mục chưa bao gồm.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+
+	echo '<section class="tam-admin-form-section tam-admin-form-section--muted">';
+	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Nội dung bổ trợ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Giữ tương thích với các khối nội dung legacy của theme', 'travel-agency-modern' ) . '</h4></div>';
+	echo '<div class="tam-admin-form-grid">';
+	tam_backend_admin_render_field( 'curatorNote', __( 'Ghi chú curator', 'travel-agency-modern' ), $form['curatorNote'], array( 'type' => 'textarea', 'rows' => 4, 'full' => true ), $errors );
+	tam_backend_admin_render_field( 'promise_text', __( 'Giá trị nhận được', 'travel-agency-modern' ), $form['promise_text'], array( 'type' => 'textarea', 'rows' => 4, 'help' => __( 'Mỗi dòng là một promise item.', 'travel-agency-modern' ), 'full' => true ), $errors );
+	tam_backend_admin_render_field( 'overview_text', __( 'Overview cards', 'travel-agency-modern' ), $form['overview_text'], array( 'type' => 'textarea', 'rows' => 4, 'help' => __( 'Mỗi dòng: tiêu đề | mô tả | icon', 'travel-agency-modern' ), 'full' => true ), $errors );
+	echo '</div>';
+	echo '</section>';
+	echo '<div class="tam-admin-actions"><button type="submit" class="button button-primary">' . esc_html( $tour_id > 0 ? __( 'Lưu tour', 'travel-agency-modern' ) : __( 'Tạo tour', 'travel-agency-modern' ) ) . '</button></div>';
+	echo '</form>';
+	echo '</section>';
+}
+
+/**
  * Render the backend connect page.
  *
  * @return void
@@ -1833,6 +2954,44 @@ function tam_backend_admin_render_connect_page() {
 		static function () {
 			$profile = tam_backend_admin_get_profile();
 			$view    = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'login';
+			$state   = tam_backend_admin_ensure_auto_session( true );
+			$error   = is_wp_error( $state ) ? $state : tam_backend_admin_get_runtime_connection_error();
+			$profile = tam_backend_admin_get_profile();
+
+			echo '<section class="tam-admin-grid tam-admin-grid--2">';
+			echo '<article class="tam-admin-card">';
+			echo '<div class="tam-admin-card__head"><h3>' . esc_html__( 'Trang thai backend admin', 'travel-agency-modern' ) . '</h3></div>';
+
+			if ( ! empty( $profile['email'] ) ) {
+				echo '<div class="tam-admin-kv">';
+				echo '<div><span>' . esc_html__( 'WordPress admin', 'travel-agency-modern' ) . '</span><strong>' . esc_html( wp_get_current_user()->display_name ) . '</strong></div>';
+				echo '<div><span>' . esc_html__( 'Email dong bo', 'travel-agency-modern' ) . '</span><strong>' . esc_html( $profile['email'] ) . '</strong></div>';
+				echo '<div><span>' . esc_html__( 'Tai khoan backend', 'travel-agency-modern' ) . '</span><strong>' . esc_html( $profile['name'] ) . '</strong></div>';
+				echo '<div><span>' . esc_html__( 'Che do xac thuc', 'travel-agency-modern' ) . '</span><strong>' . esc_html__( 'Tu dong theo phien WordPress admin', 'travel-agency-modern' ) . '</strong></div>';
+				echo '</div>';
+				echo '<p class="tam-admin-muted">' . esc_html__( 'Khu quan tri nay khong can dang nhap backend rieng nua. Moi request se duoc dong bo tu dong tu tai khoan WordPress admin hien tai.', 'travel-agency-modern' ) . '</p>';
+			} else {
+				echo '<p class="tam-admin-muted">' . esc_html__( 'He thong dang co gang dong bo tai khoan backend tu dong cho WordPress admin hien tai.', 'travel-agency-modern' ) . '</p>';
+			}
+
+			echo '</article>';
+			echo '<article class="tam-admin-card">';
+			echo '<div class="tam-admin-card__head"><h3>' . esc_html__( 'Kiem tra ket noi', 'travel-agency-modern' ) . '</h3></div>';
+
+			if ( $error instanceof WP_Error ) {
+				echo '<div class="notice notice-error inline tam-admin-notice"><p>' . esc_html( $error->get_error_message() ) . '</p></div>';
+			} else {
+				echo '<div class="notice notice-success inline tam-admin-notice"><p>' . esc_html__( 'Backend admin dang san sang va duoc cap token tu dong.', 'travel-agency-modern' ) . '</p></div>';
+			}
+
+			echo '<ul class="tam-admin-bullets">';
+			echo '<li>' . esc_html__( 'Khong con form dang nhap hay dang ky backend trong wp-admin.', 'travel-agency-modern' ) . '</li>';
+			echo '<li>' . esc_html__( 'Neu backend loi, hay kiem tra backend-api/.env, JWT_SECRET, bang admins va server Node.', 'travel-agency-modern' ) . '</li>';
+			echo '<li>' . esc_html__( 'Neu can tai lai phien, chi can refresh trang hoac dang nhap lai WordPress admin.', 'travel-agency-modern' ) . '</li>';
+			echo '</ul>';
+			echo '</article>';
+			echo '</section>';
+			return;
 
 			echo '<section class="tam-admin-grid tam-admin-grid--2">';
 			echo '<article class="tam-admin-card">';
@@ -2007,6 +3166,9 @@ function tam_backend_admin_render_tour_form( $form, $errors, $tour_id = 0, $gene
 	$errors = is_array( $errors ) ? $errors : array();
 	$general_error = trim( (string) $general_error );
 
+	tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id, $general_error );
+	return;
+
 	echo '<section class="tam-admin-card">';
 	echo '<div class="tam-admin-card__head"><h3>' . esc_html( $tour_id > 0 ? __( 'Chỉnh sửa tour', 'travel-agency-modern' ) : __( 'Tạo tour mới', 'travel-agency-modern' ) ) . '</h3><a class="button button-secondary" href="' . esc_url( tam_backend_admin_page_url( 'tam-admin-tours' ) ) . '">' . esc_html__( 'Quay lại danh sách', 'travel-agency-modern' ) . '</a></div>';
 
@@ -2026,6 +3188,7 @@ function tam_backend_admin_render_tour_form( $form, $errors, $tour_id = 0, $gene
 	echo '<input type="hidden" name="action" value="tam_backend_admin_tour_save" />';
 	echo '<input type="hidden" name="tour_id" value="' . esc_attr( $tour_id ) . '" />';
 	echo '<input type="hidden" name="tour[imageUrl]" value="' . esc_attr( $form['imageUrl'] ) . '" />';
+	tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id );
 	echo '<div class="tam-admin-form-grid">';
 	tam_backend_admin_render_field( 'title', __( 'Tên tour', 'travel-agency-modern' ), $form['title'], array( 'placeholder' => __( 'Ví dụ: Vịnh Hạ Long Premium', 'travel-agency-modern' ) ), $errors );
 	tam_backend_admin_render_field( 'location', __( 'Địa điểm', 'travel-agency-modern' ), $form['location'], array( 'placeholder' => __( 'Ví dụ: Quảng Ninh', 'travel-agency-modern' ) ), $errors );
@@ -2615,6 +3778,12 @@ function tam_backend_admin_handle_auth_action() {
 		wp_die( esc_html__( 'Bạn không có quyền thực hiện thao tác này.', 'travel-agency-modern' ) );
 	}
 
+	tam_backend_admin_redirect_notice(
+		TAM_BACKEND_ADMIN_MENU_SLUG,
+		__( 'Dang nhap backend rieng trong wp-admin da bi go. He thong nay chi dung phien WordPress admin.', 'travel-agency-modern' ),
+		'warning'
+	);
+
 	check_admin_referer( 'tam_backend_admin_auth', 'tam_backend_admin_nonce' );
 
 	$intent = isset( $_POST['intent'] ) ? sanitize_key( wp_unslash( $_POST['intent'] ) ) : 'login';
@@ -2664,18 +3833,38 @@ function tam_backend_admin_handle_tour_save() {
 
 	check_admin_referer( 'tam_backend_admin_tour_save', 'tam_backend_admin_tour_nonce' );
 
-	$tour_id = isset( $_POST['tour_id'] ) ? absint( $_POST['tour_id'] ) : 0;
-	$input   = isset( $_POST['tour'] ) ? (array) wp_unslash( $_POST['tour'] ) : array();
-	$file    = isset( $_FILES['tour_image'] ) ? $_FILES['tour_image'] : array();
-	$payload = tam_backend_admin_build_tour_payload( $input );
-	$view    = $tour_id > 0 ? 'edit' : 'create';
+	$tour_id          = isset( $_POST['tour_id'] ) ? absint( $_POST['tour_id'] ) : 0;
+	$input            = isset( $_POST['tour'] ) ? (array) wp_unslash( $_POST['tour'] ) : array();
+	$uploads          = tam_backend_admin_collect_tour_uploads();
+	$payload          = tam_backend_admin_build_tour_payload( $input );
+	$view             = $tour_id > 0 ? 'edit' : 'create';
+	$require_primary  = empty( $payload['imageUrl'] );
+	$upload_errors    = tam_backend_admin_validate_tour_uploads( $uploads, $require_primary );
+
+	if ( ! empty( $upload_errors ) ) {
+		$flash_form = wp_parse_args( $input, tam_backend_admin_default_tour_form() );
+		$flash_form['galleryImages'] = isset( $payload['galleryImages'] ) ? $payload['galleryImages'] : array();
+		$flash_form['imageUrl']      = isset( $payload['imageUrl'] ) ? (string) $payload['imageUrl'] : '';
+		tam_backend_admin_set_flash( 'tour_form', $flash_form );
+		tam_backend_admin_set_flash( 'tour_errors', $upload_errors );
+		tam_backend_admin_redirect(
+			'tam-admin-tours',
+			array(
+				'view'    => $view,
+				'tour_id' => $tour_id,
+			)
+		);
+	}
 
 	$response = $tour_id > 0
-		? tam_backend_admin_update_tour( $tour_id, $payload, $file )
-		: tam_backend_admin_create_tour( $payload, $file );
+		? tam_backend_admin_update_tour( $tour_id, $payload, $uploads )
+		: tam_backend_admin_create_tour( $payload, $uploads );
 
 	if ( ! $response['success'] ) {
-		tam_backend_admin_set_flash( 'tour_form', wp_parse_args( $input, tam_backend_admin_default_tour_form() ) );
+		$flash_form = wp_parse_args( $input, tam_backend_admin_default_tour_form() );
+		$flash_form['galleryImages'] = isset( $payload['galleryImages'] ) ? $payload['galleryImages'] : array();
+		$flash_form['imageUrl']      = isset( $payload['imageUrl'] ) ? (string) $payload['imageUrl'] : '';
+		tam_backend_admin_set_flash( 'tour_form', $flash_form );
 		$field_errors = isset( $response['errors'] ) && is_array( $response['errors'] ) ? $response['errors'] : array();
 		tam_backend_admin_set_flash( 'tour_errors', $field_errors );
 
@@ -2747,6 +3936,12 @@ function tam_backend_admin_handle_sync() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( esc_html__( 'Bạn không có quyền thực hiện thao tác này.', 'travel-agency-modern' ) );
 	}
+
+	tam_backend_admin_redirect_notice(
+		TAM_BACKEND_ADMIN_MENU_SLUG,
+		__( 'Chuc nang Sync Tours thu cong da bi go khoi wp-admin.', 'travel-agency-modern' ),
+		'warning'
+	);
 
 	check_admin_referer( 'tam_backend_admin_sync', 'tam_backend_admin_sync_nonce' );
 

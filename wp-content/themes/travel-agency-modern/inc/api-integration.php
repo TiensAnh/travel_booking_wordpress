@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Backend API integration helpers for the hybrid WordPress + Node setup.
  */
@@ -1086,15 +1086,66 @@ function tam_backend_api_get_tour_id_for_post( $post_id ) {
 }
 
 /**
+ * Return the synced backend gallery URLs for a WordPress tour post.
+ *
+ * @param int $post_id WordPress tour post ID.
+ * @return string[]
+ */
+function tam_backend_api_get_tour_gallery_for_post( $post_id ) {
+	$image_url = (string) get_post_meta( $post_id, '_tam_api_image_url', true );
+	$image_url = tam_backend_api_resolve_asset_url( $image_url );
+
+	if ( $image_url ) {
+		return array( $image_url );
+	}
+
+	$gallery_meta = get_post_meta( $post_id, '_tam_api_gallery_images', true );
+	$gallery_meta = is_array( $gallery_meta ) ? $gallery_meta : array();
+
+	foreach ( $gallery_meta as $legacy_image_url ) {
+		$legacy_image_url = tam_backend_api_resolve_asset_url( $legacy_image_url );
+
+		if ( $legacy_image_url ) {
+			return array( $legacy_image_url );
+		}
+	}
+
+	return array();
+
+	$gallery_meta = get_post_meta( $post_id, '_tam_api_gallery_images', true );
+	$gallery_meta = is_array( $gallery_meta ) ? $gallery_meta : array();
+	$gallery      = array();
+
+	foreach ( $gallery_meta as $image_url ) {
+		$image_url = tam_backend_api_resolve_asset_url( $image_url );
+
+		if ( $image_url ) {
+			$gallery[] = $image_url;
+		}
+	}
+
+	if ( empty( $gallery ) ) {
+		$image_url = (string) get_post_meta( $post_id, '_tam_api_image_url', true );
+		$image_url = tam_backend_api_resolve_asset_url( $image_url );
+
+		if ( $image_url ) {
+			$gallery[] = $image_url;
+		}
+	}
+
+	return array_values( array_unique( $gallery ) );
+}
+
+/**
  * Return the synced backend image URL for a WordPress tour post.
  *
  * @param int $post_id WordPress tour post ID.
  * @return string
  */
 function tam_backend_api_get_tour_image_for_post( $post_id ) {
-	$image_url = (string) get_post_meta( $post_id, '_tam_api_image_url', true );
+	$gallery = tam_backend_api_get_tour_gallery_for_post( $post_id );
 
-	return tam_backend_api_resolve_asset_url( $image_url );
+	return ! empty( $gallery[0] ) ? (string) $gallery[0] : '';
 }
 
 /**
@@ -1121,10 +1172,11 @@ function tam_backend_api_get_reviews_for_post( $post_id ) {
 	return array_map(
 		static function ( $review ) {
 			return array(
-				'name'    => isset( $review['userName'] ) ? (string) $review['userName'] : 'Guest',
-				'rating'  => isset( $review['rating'] ) ? (string) $review['rating'] : '5.0',
-				'comment' => isset( $review['comment'] ) ? (string) $review['comment'] : '',
-				'route'   => isset( $review['tourTitle'] ) ? (string) $review['tourTitle'] : '',
+				'name'      => isset( $review['userName'] ) ? (string) $review['userName'] : 'Guest',
+				'rating'    => isset( $review['rating'] ) ? (string) $review['rating'] : '5.0',
+				'comment'   => isset( $review['comment'] ) ? (string) $review['comment'] : '',
+				'route'     => isset( $review['tourTitle'] ) ? (string) $review['tourTitle'] : '',
+				'createdAt' => isset( $review['createdAt'] ) ? (string) $review['createdAt'] : '',
 			);
 		},
 		$payload
@@ -2650,6 +2702,39 @@ function tam_backend_api_join_lines( $items, $value_field = '' ) {
 }
 
 /**
+ * Serialize departure date rows into the WordPress meta format used by the theme.
+ *
+ * @param array $items API departure date rows.
+ * @return string
+ */
+function tam_backend_api_format_departure_dates( $items ) {
+	$rows = array();
+
+	foreach ( is_array( $items ) ? $items : array() as $item ) {
+		if ( ! is_array( $item ) ) {
+			continue;
+		}
+
+		$value = isset( $item['value'] ) ? trim( (string) $item['value'] ) : '';
+		$label = isset( $item['label'] ) ? trim( (string) $item['label'] ) : '';
+
+		if ( '' === $value ) {
+			continue;
+		}
+
+		$rows[] = implode(
+			'|',
+			array(
+				$value,
+				$label ? $label : $value,
+			)
+		);
+	}
+
+	return implode( "\n", $rows );
+}
+
+/**
  * Convert API itinerary rows to the theme textarea format.
  *
  * @param array $items API itinerary rows.
@@ -2695,6 +2780,8 @@ function tam_backend_api_format_itinerary( $items ) {
  * @return string
  */
 function tam_backend_api_build_tour_content( $tour ) {
+	return '';
+
 	$parts = array();
 
 	if ( ! empty( $tour['description'] ) ) {
@@ -2804,7 +2891,14 @@ function tam_backend_api_upsert_tour_post( $tour ) {
 
 	update_post_meta( $post_id, '_tam_api_tour_id', $api_tour_id );
 	update_post_meta( $post_id, '_tam_api_tour_status', isset( $tour['status'] ) ? (string) $tour['status'] : '' );
-	update_post_meta( $post_id, '_tam_api_image_url', isset( $tour['imageUrl'] ) ? (string) $tour['imageUrl'] : '' );
+	$primary_image = isset( $tour['imageUrl'] ) ? (string) $tour['imageUrl'] : '';
+
+	if ( '' === $primary_image && ! empty( $tour['galleryImages'] ) && is_array( $tour['galleryImages'] ) ) {
+		$primary_image = (string) reset( $tour['galleryImages'] );
+	}
+
+	update_post_meta( $post_id, '_tam_api_image_url', $primary_image );
+	update_post_meta( $post_id, '_tam_api_gallery_images', $primary_image ? array( $primary_image ) : array() );
 	update_post_meta( $post_id, '_tam_tour_duration', isset( $tour['durationText'] ) ? (string) $tour['durationText'] : '' );
 	update_post_meta( $post_id, '_tam_tour_departure', $departure );
 	update_post_meta( $post_id, '_tam_tour_price_from', isset( $tour['price'] ) ? (string) absint( $tour['price'] ) : '' );
@@ -2813,13 +2907,17 @@ function tam_backend_api_upsert_tour_post( $tour ) {
 	update_post_meta( $post_id, '_tam_tour_review_count', isset( $tour['reviews'] ) ? (string) absint( $tour['reviews'] ) : '0' );
 	update_post_meta( $post_id, '_tam_tour_season', isset( $tour['season'] ) ? (string) $tour['season'] : '' );
 	update_post_meta( $post_id, '_tam_tour_transport', isset( $tour['transport'] ) ? (string) $tour['transport'] : '' );
-	update_post_meta( $post_id, '_tam_tour_departure_dates', '' );
+	update_post_meta( $post_id, '_tam_tour_departure_dates', tam_backend_api_format_departure_dates( isset( $tour['departureDates'] ) ? $tour['departureDates'] : array() ) );
 	update_post_meta( $post_id, '_tam_tour_highlights', tam_backend_api_join_lines( isset( $tour['highlights'] ) ? $tour['highlights'] : array(), 'description' ) );
 	update_post_meta( $post_id, '_tam_tour_itinerary', tam_backend_api_format_itinerary( isset( $tour['itinerary'] ) ? $tour['itinerary'] : array() ) );
 	update_post_meta( $post_id, '_tam_tour_includes', tam_backend_api_join_lines( isset( $tour['includes'] ) ? $tour['includes'] : array() ) );
-	update_post_meta( $post_id, '_tam_tour_excludes', '' );
+	update_post_meta( $post_id, '_tam_tour_excludes', tam_backend_api_join_lines( isset( $tour['excludes'] ) ? $tour['excludes'] : array() ) );
+	// Sync m&#244; t&#7843; &#273;&#7847;y &#273;&#7911; v&#224;o WP meta &#8212; d&#249;ng cho Ph&#432;&#417;ng &#225;n C (&#432;u ti&#234;n backend description).
+	update_post_meta( $post_id, '_tam_api_description', isset( $tour['description'] ) ? (string) $tour['description'] : '' );
+	update_post_meta( $post_id, '_tam_api_average_rating', isset( $tour['rating'] ) ? (string) $tour['rating'] : '' );
+	update_post_meta( $post_id, '_tam_api_total_reviews', isset( $tour['reviews'] ) ? absint( $tour['reviews'] ) : 0 );
 	update_post_meta( $post_id, '_tam_tour_review_snippets', '' );
-	update_post_meta( $post_id, '_tam_tour_featured', ! empty( $tour['badge'] ) ? '1' : '' );
+	update_post_meta( $post_id, '_tam_tour_featured', ! empty( $tour['featured'] ) ? '1' : '' );
 
 	if ( ! empty( $tour['location'] ) ) {
 		wp_set_object_terms( $post_id, sanitize_text_field( $tour['location'] ), 'tour_destination', false );

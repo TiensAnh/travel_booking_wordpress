@@ -4,7 +4,6 @@ const multer = require('multer');
 
 const TOUR_UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads', 'tours');
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
 fs.mkdirSync(TOUR_UPLOAD_DIR, { recursive: true });
 
 function sanitizeFileName(fileName = 'tour-image') {

@@ -20,12 +20,35 @@ while ( have_posts() ) :
 	$reviews           = tam_get_tour_reviews( get_the_ID(), $tour_meta );
 	$primary_term      = ! empty( $destinations ) ? $destinations[0] : null;
 	$destination_names = ! empty( $destinations ) ? implode( ' • ', wp_list_pluck( $destinations, 'name' ) ) : __( 'Đang cập nhật', 'travel-agency-modern' );
-	$intro_text        = has_excerpt() ? get_the_excerpt() : wp_trim_words( wp_strip_all_tags( get_post_field( 'post_content', get_the_ID() ) ), 36 );
-	$rating_value      = ! empty( $tour_meta['rating'] ) ? (float) str_replace( ',', '.', $tour_meta['rating'] ) : 4.9;
-	$rating_value      = max( 1, min( 5, $rating_value ) );
-	$rating_display    = number_format_i18n( $rating_value, 1 );
-	$review_count      = ! empty( $tour_meta['review_count'] ) ? absint( preg_replace( '/\D+/', '', (string) $tour_meta['review_count'] ) ) : 0;
-	$review_count      = max( $review_count, count( $reviews ) ? count( $reviews ) * 27 : 64 );
+	// Phuong an C: uu tien backend description day du, fallback sang WP excerpt/content.
+	$api_description = function_exists( 'tam_backend_api_get_tour_id_for_post' ) && tam_backend_api_get_tour_id_for_post( get_the_ID() ) > 0
+		? trim( (string) get_post_meta( get_the_ID(), '_tam_api_description', true ) )
+		: '';
+	$intro_text = $api_description !== ''
+		? $api_description
+		: ( has_excerpt() ? get_the_excerpt() : wp_trim_words( wp_strip_all_tags( get_post_field( 'post_content', get_the_ID() ) ), 36 ) );
+	// Rating lay tu backend API (average_rating, total_reviews) — khong hardcode.
+	$api_tour_id       = function_exists( 'tam_backend_api_get_tour_id_for_post' ) ? tam_backend_api_get_tour_id_for_post( get_the_ID() ) : 0;
+	$api_average_rating = $api_tour_id > 0 ? (float) get_post_meta( get_the_ID(), '_tam_api_average_rating', true ) : 0;
+	$api_total_reviews  = $api_tour_id > 0 ? (int) get_post_meta( get_the_ID(), '_tam_api_total_reviews', true ) : 0;
+	// Fallback sang WP meta neu chua sync
+	if ( 0.0 === $api_average_rating && ! empty( $tour_meta['rating'] ) ) {
+		$api_average_rating = (float) str_replace( ',', '.', $tour_meta['rating'] );
+	}
+	if ( 0 === $api_total_reviews && ! empty( $tour_meta['review_count'] ) ) {
+		$api_total_reviews = absint( preg_replace( '/\D+/', '', (string) $tour_meta['review_count'] ) );
+	}
+	// Su dung review thuc te neu co
+	if ( 0 === $api_total_reviews && ! empty( $reviews ) ) {
+		$api_total_reviews = count( $reviews );
+	}
+	if ( 0.0 === $api_average_rating && ! empty( $reviews ) ) {
+		$sum = array_sum( array_column( $reviews, 'rating' ) );
+		$api_average_rating = count( $reviews ) > 0 ? round( $sum / count( $reviews ), 1 ) : 0;
+	}
+	$rating_value   = $api_average_rating > 0 ? max( 1, min( 5, $api_average_rating ) ) : 0;
+	$rating_display = $rating_value > 0 ? number_format_i18n( $rating_value, 1 ) : '';
+	$review_count   = $api_total_reviews;
 	$price_numeric     = (int) preg_replace( '/[^\d]/', '', (string) $tour_meta['price_from'] );
 	$price_display     = tam_format_tour_price( $tour_meta['price_from'] );
 	$duration_label    = ! empty( $tour_meta['duration'] ) ? $tour_meta['duration'] : __( 'Đang cập nhật', 'travel-agency-modern' );
@@ -71,7 +94,7 @@ while ( have_posts() ) :
 						<section class="tam-tour-detail__section tam-tour-detail__gallery tam-content-card">
 							<div class="tam-tour-detail__section-head">
 								<div>
-									<div class="tam-eyebrow"><?php esc_html_e( 'Gallery ảnh', 'travel-agency-modern' ); ?></div>
+									<div class="tam-eyebrow"><?php esc_html_e( 'Ảnh tour', 'travel-agency-modern' ); ?></div>
 									<h1 class="tam-tour-detail__title"><?php the_title(); ?></h1>
 								</div>
 								<a class="tam-tour-detail__backlink" href="<?php echo esc_url( tam_get_page_url_by_path( 'tour' ) ); ?>">
@@ -89,22 +112,6 @@ while ( have_posts() ) :
 								</div>
 							</div>
 
-							<?php if ( ! empty( $gallery_images ) ) : ?>
-								<div class="tam-tour-detail__thumbs" role="list">
-									<?php foreach ( $gallery_images as $index => $image ) : ?>
-										<button
-											type="button"
-											class="tam-tour-detail__thumb<?php echo 0 === $index ? ' is-active' : ''; ?>"
-											data-tour-gallery-thumb
-											data-image-url="<?php echo esc_url( $image['url'] ); ?>"
-											data-image-alt="<?php echo esc_attr( $image['alt'] ); ?>"
-											aria-label="<?php echo esc_attr( sprintf( __( 'Xem ảnh %d', 'travel-agency-modern' ), $index + 1 ) ); ?>"
-										>
-											<img src="<?php echo esc_url( $image['url'] ); ?>" alt="<?php echo esc_attr( $image['alt'] ); ?>" loading="lazy" />
-										</button>
-									<?php endforeach; ?>
-								</div>
-							<?php endif; ?>
 						</section>
 
 						<section class="tam-tour-detail__section tam-tour-detail__info tam-content-card">
@@ -159,9 +166,15 @@ while ( have_posts() ) :
 								</div>
 							</div>
 
-							<div class="tam-tour-detail__copy">
-								<p><?php echo esc_html( $intro_text ? $intro_text : __( 'Hành trình đang được cập nhật nội dung chi tiết. ADN Travel sẽ tinh chỉnh lịch trình theo mùa và nhu cầu thực tế của từng nhóm khách.', 'travel-agency-modern' ) ); ?></p>
-							</div>
+											<div class="tam-tour-detail__copy">
+					<?php if ( $intro_text ) : ?>
+						<div class="tam-tour-detail__description-full">
+							<?php echo wp_kses_post( wpautop( $intro_text ) ); ?>
+						</div>
+					<?php else : ?>
+						<p class="tam-tour-detail__description-empty"><?php esc_html_e( 'Hành trình đang được cập nhật nội dung chi tiết.', 'travel-agency-modern' ); ?></p>
+					<?php endif; ?>
+				</div>
 
 							<ul class="tam-tour-detail__highlight-list">
 								<?php foreach ( $highlights as $highlight ) : ?>
@@ -185,15 +198,22 @@ while ( have_posts() ) :
 							</div>
 
 							<div class="tam-tour-detail__timeline-list">
-								<?php foreach ( $itinerary as $item ) : ?>
-									<article class="tam-tour-detail__timeline-item">
-										<div class="tam-tour-detail__timeline-day"><?php echo esc_html( $item['label'] ); ?></div>
-										<div class="tam-tour-detail__timeline-card">
-											<h3><?php echo esc_html( $item['title'] ); ?></h3>
-											<p><?php echo esc_html( $item['description'] ); ?></p>
-										</div>
-									</article>
-								<?php endforeach; ?>
+								<?php if ( empty( $itinerary ) ) : ?>
+									<div class="tam-empty-state tam-empty-state--inline">
+										<strong><?php esc_html_e( 'Lịch trình đang được cập nhật', 'travel-agency-modern' ); ?></strong>
+										<p><?php esc_html_e( 'Vui lòng liên hệ để biết chi tiết lịch trình.', 'travel-agency-modern' ); ?></p>
+									</div>
+								<?php else : ?>
+									<?php foreach ( $itinerary as $item ) : ?>
+										<article class="tam-tour-detail__timeline-item">
+											<div class="tam-tour-detail__timeline-day"><?php echo esc_html( $item['label'] ); ?></div>
+											<div class="tam-tour-detail__timeline-card">
+												<h3><?php echo esc_html( $item['title'] ); ?></h3>
+												<p><?php echo esc_html( $item['description'] ); ?></p>
+											</div>
+										</article>
+									<?php endforeach; ?>
+								<?php endif; ?>
 							</div>
 						</section>
 
@@ -208,20 +228,28 @@ while ( have_posts() ) :
 							<div class="tam-tour-detail__service-grid">
 								<div class="tam-tour-detail__service-card">
 									<h3><?php esc_html_e( 'Bao gồm', 'travel-agency-modern' ); ?></h3>
-									<ul>
-										<?php foreach ( $includes as $item ) : ?>
-											<li><?php echo esc_html( $item ); ?></li>
-										<?php endforeach; ?>
-									</ul>
+									<?php if ( empty( $includes ) ) : ?>
+										<p class="tam-empty-state--text"><?php esc_html_e( 'Đang cập nhật...', 'travel-agency-modern' ); ?></p>
+									<?php else : ?>
+										<ul>
+											<?php foreach ( $includes as $item ) : ?>
+												<li><?php echo esc_html( $item ); ?></li>
+											<?php endforeach; ?>
+										</ul>
+									<?php endif; ?>
 								</div>
 
 								<div class="tam-tour-detail__service-card tam-tour-detail__service-card--alt">
 									<h3><?php esc_html_e( 'Không bao gồm', 'travel-agency-modern' ); ?></h3>
-									<ul>
-										<?php foreach ( $excludes as $item ) : ?>
-											<li><?php echo esc_html( $item ); ?></li>
-										<?php endforeach; ?>
-									</ul>
+									<?php if ( empty( $excludes ) ) : ?>
+										<p class="tam-empty-state--text"><?php esc_html_e( 'Đang cập nhật...', 'travel-agency-modern' ); ?></p>
+									<?php else : ?>
+										<ul>
+											<?php foreach ( $excludes as $item ) : ?>
+												<li><?php echo esc_html( $item ); ?></li>
+											<?php endforeach; ?>
+										</ul>
+									<?php endif; ?>
 								</div>
 							</div>
 						</section>
