@@ -129,7 +129,7 @@ while ( have_posts() ) :
 				<?php else : ?>
 					<?php if ( empty( $checkout['can_checkout_api'] ) ) : ?>
 						<div class="tam-form-notice tam-form-notice--error">
-							<?php esc_html_e( 'Tour này chưa được sync sang backend API, nên checkout online đang tạm khóa. Hãy chạy Sync Tours API trước khi demo thanh toán.', 'travel-agency-modern' ); ?>
+							<?php esc_html_e( 'Tour này hiện chưa sẵn sàng cho thanh toán trực tuyến. Vui lòng chọn tour khác hoặc liên hệ ADN Travel để được hỗ trợ giữ chỗ.', 'travel-agency-modern' ); ?>
 						</div>
 					<?php endif; ?>
 

@@ -17,7 +17,7 @@ while ( have_posts() ) :
 		array(
 			'eyebrow'     => __( 'Liên hệ', 'travel-agency-modern' ),
 			'title'       => get_the_title(),
-			'description' => has_excerpt() ? get_the_excerpt() : __( 'Trang liên hệ được hoàn thiện theo hướng vận hành rõ hơn: có form, hotline, chat nhanh, FAQ và newsletter để đội ngũ tiếp nhận nhu cầu gọn gàng hơn.', 'travel-agency-modern' ),
+			'description' => has_excerpt() ? get_the_excerpt() : __( 'Liên hệ với ADN Travel để nhận tư vấn nhanh, báo giá phù hợp và hỗ trợ chọn hành trình theo nhu cầu của bạn.', 'travel-agency-modern' ),
 			'image'       => tam_get_hero_image_url( get_the_ID() ),
 		)
 	);
@@ -61,12 +61,6 @@ while ( have_posts() ) :
 						<div class="tam-value-card">
 							<strong><?php esc_html_e( 'Giờ làm việc gợi ý', 'travel-agency-modern' ); ?></strong>
 							<p><?php esc_html_e( 'Thứ 2 - Thứ 7: 08:00 - 20:00. Chủ nhật và ngoài giờ, khách vẫn có thể để lại form hoặc chat nhanh.', 'travel-agency-modern' ); ?></p>
-						</div>
-						<div class="tam-map-placeholder">
-							<div>
-								<strong><?php esc_html_e( 'Chỗ nhúng Google Maps', 'travel-agency-modern' ); ?></strong>
-								<p><?php esc_html_e( 'Nếu cần, bạn có thể dán iframe bản đồ vào nội dung trang này hoặc thay box này bằng embed map thực tế.', 'travel-agency-modern' ); ?></p>
-							</div>
 						</div>
 						<div class="tam-value-card">
 							<strong><?php esc_html_e( 'Quy trình tiếp nhận rõ ràng', 'travel-agency-modern' ); ?></strong>

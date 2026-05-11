@@ -22,23 +22,15 @@ while ( have_posts() ) :
 	);
 	?>
 	<main id="main-content" class="site-main">
-		<section class="tam-section tam-section--compact">
-			<div class="tam-container tam-layout--wide">
-				<div class="tam-content-card tam-rich-content">
-					<?php the_content(); ?>
-				</div>
-				<div class="tam-sidebar-stack">
-					<div class="tam-value-card">
-						<strong><?php esc_html_e( 'Tư duy của phiên bản này', 'travel-agency-modern' ); ?></strong>
-						<p><?php esc_html_e( 'Tập trung vào bộ khung bán hàng cần thiết nhất: homepage để chốt hướng, page Tour để duyệt nhanh, single tour để lấy lead và contact page để liên hệ thương hiệu.', 'travel-agency-modern' ); ?></p>
-					</div>
-					<div class="tam-value-card">
-						<strong><?php esc_html_e( 'Nội dung dễ cập nhật', 'travel-agency-modern' ); ?></strong>
-						<p><?php esc_html_e( 'Toàn bộ phần văn bản chính của trang giới thiệu vẫn dùng WordPress editor, nên bạn có thể sửa thông điệp thương hiệu mà không cần sửa code.', 'travel-agency-modern' ); ?></p>
+		<?php if ( trim( wp_strip_all_tags( get_the_content() ) ) ) : ?>
+			<section class="tam-section tam-section--compact">
+				<div class="tam-container">
+					<div class="tam-content-card tam-rich-content">
+						<?php the_content(); ?>
 					</div>
 				</div>
-			</div>
-		</section>
+			</section>
+		<?php endif; ?>
 
 		<section class="tam-section tam-section--compact">
 			<div class="tam-container">

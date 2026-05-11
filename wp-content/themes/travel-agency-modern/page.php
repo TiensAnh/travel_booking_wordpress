@@ -8,7 +8,7 @@ get_header();
 while ( have_posts() ) :
 	the_post();
 
-	$description = has_excerpt() ? get_the_excerpt() : __( 'Nội dung trang có thể được cập nhật trực tiếp trong WordPress editor mà vẫn giữ bố cục nhất quán với toàn site.', 'travel-agency-modern' );
+	$description = has_excerpt() ? get_the_excerpt() : __( 'Khám phá thêm thông tin chi tiết và những nội dung cần thiết cho hành trình của bạn.', 'travel-agency-modern' );
 	tam_render_page_intro(
 		array(
 			'eyebrow'     => __( 'Thông tin website', 'travel-agency-modern' ),

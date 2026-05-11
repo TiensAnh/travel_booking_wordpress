@@ -68,7 +68,7 @@ tam_render_page_intro(
 	array(
 		'eyebrow'     => __( 'Danh sách tour', 'travel-agency-modern' ),
 		'title'       => $current_page_post ? get_the_title( $current_page_post ) : __( 'Tour', 'travel-agency-modern' ),
-		'description' => $current_page_post && has_excerpt( $current_page_post ) ? get_the_excerpt( $current_page_post ) : __( 'Danh sách tour được kết nối trực tiếp với backend API, có bộ lọc riêng và phân trang để dễ theo dõi hơn.', 'travel-agency-modern' ),
+		'description' => $current_page_post && has_excerpt( $current_page_post ) ? get_the_excerpt( $current_page_post ) : __( 'Khám phá các hành trình nổi bật và chọn tour phù hợp theo điểm đến, thời gian và nhu cầu của bạn.', 'travel-agency-modern' ),
 		'image'       => $current_page_post ? tam_get_hero_image_url( $current_page_post->ID ) : tam_get_hero_image_url(),
 	)
 );
@@ -115,7 +115,7 @@ tam_render_page_intro(
 					<div class="tam-promo-card tam-promo-card--aside">
 						<span class="tam-promo-badge"><?php esc_html_e( 'Gợi ý nhanh', 'travel-agency-modern' ); ?></span>
 						<h3><?php esc_html_e( 'Khách chưa biết đi đâu thường bắt đầu từ điểm đến', 'travel-agency-modern' ); ?></h3>
-						<p><?php esc_html_e( 'Ban co the dung bo loc nay de dua khach vao dung nhom tour ngay tu buoc dau.', 'travel-agency-modern' ); ?></p>
+						<p><?php esc_html_e( 'Lọc nhanh theo điểm đến để tìm hành trình phù hợp chỉ trong vài thao tác.', 'travel-agency-modern' ); ?></p>
 					</div>
 
 					<div class="tam-value-card">

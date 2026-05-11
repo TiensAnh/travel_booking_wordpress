@@ -8369,3 +8369,61 @@ body.travel-agency-modern .tam-booking-summary__overlay,
 body.travel-agency-modern .tam-card__placeholder {
   z-index: 2;
 }
+
+/* Demo cleanup: keep tour booking and account panels clear of the sticky header. */
+body.travel-agency-modern .tam-tour-detail__booking-card.tam-summary-card {
+  top: 132px;
+}
+
+body.travel-agency-modern .tam-account-page .tam-summary-card,
+body.travel-agency-modern .tam-account-page .tam-content-card {
+  position: static !important;
+  top: auto !important;
+  z-index: auto;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-shell,
+body.travel-agency-modern .tam-account-page .tam-account-stats,
+body.travel-agency-modern .tam-account-page .tam-account-layout,
+body.travel-agency-modern .tam-account-page .tam-account-main,
+body.travel-agency-modern .tam-account-page .tam-account-aside {
+  position: relative;
+  z-index: 0;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-stats {
+  margin-bottom: 4px;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-detail {
+  position: sticky !important;
+  top: 132px !important;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-hero__meta li,
+body.travel-agency-modern .tam-account-page .tam-account-detail__facts li {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+body.travel-agency-modern .tam-account-page .tam-account-hero__meta span,
+body.travel-agency-modern .tam-account-page .tam-account-detail__facts span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  body.travel-agency-modern .tam-tour-detail__booking-card.tam-summary-card,
+  body.travel-agency-modern .tam-account-page .tam-account-detail {
+    position: static !important;
+    top: auto !important;
+  }
+}
+/* Image fit fix: tour cards and main tour gallery should fill their frames. */
+body.travel-agency-modern .tam-card__media img,
+body.travel-agency-modern .tam-tour-detail__gallery-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}

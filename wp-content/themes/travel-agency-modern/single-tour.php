@@ -28,13 +28,23 @@ while ( have_posts() ) :
 		? $api_description
 		: ( has_excerpt() ? get_the_excerpt() : wp_strip_all_tags( get_post_field( 'post_content', get_the_ID() ) ) );
 	// Rating lấy từ backend API (average_rating, total_reviews) — không hardcode.
-	$api_tour_id       = function_exists( 'tam_backend_api_get_tour_id_for_post' ) ? tam_backend_api_get_tour_id_for_post( get_the_ID() ) : 0;
-	$api_average_rating = $api_tour_id > 0 ? (float) get_post_meta( get_the_ID(), '_tam_api_average_rating', true ) : 0;
-	$api_total_reviews  = $api_tour_id > 0 ? (int) get_post_meta( get_the_ID(), '_tam_api_total_reviews', true ) : 0;
-	$rating_value   = $api_average_rating > 0 ? max( 1, min( 5, $api_average_rating ) ) : 0;
+	// Prefer synced backend aggregates, but fall back to the real review list when meta is still empty.
+	$api_tour_id         = function_exists( 'tam_backend_api_get_tour_id_for_post' ) ? tam_backend_api_get_tour_id_for_post( get_the_ID() ) : 0;
+	$api_average_rating  = $api_tour_id > 0 ? (float) get_post_meta( get_the_ID(), '_tam_api_average_rating', true ) : 0;
+	$api_total_reviews   = $api_tour_id > 0 ? (int) get_post_meta( get_the_ID(), '_tam_api_total_reviews', true ) : 0;
+	$review_count        = $api_total_reviews > 0 ? $api_total_reviews : count( $reviews );
+	$fallback_rating_sum = 0;
+
+	if ( $api_average_rating <= 0 && ! empty( $reviews ) ) {
+		foreach ( $reviews as $review_item ) {
+			$fallback_rating_sum += isset( $review_item['rating'] ) ? (float) $review_item['rating'] : 0;
+		}
+	}
+
+	$rating_source  = $api_average_rating > 0 ? $api_average_rating : ( $review_count > 0 ? $fallback_rating_sum / $review_count : 0 );
+	$rating_value   = $rating_source > 0 ? max( 1, min( 5, $rating_source ) ) : 0;
 	$rating_display = $rating_value > 0 ? number_format_i18n( $rating_value, 1 ) : '';
-	$review_count   = $rating_value > 0 ? $api_total_reviews : 0;
-	$has_reviews     = $rating_value > 0 && $review_count > 0;
+	$has_reviews    = $rating_value > 0 && $review_count > 0;
 	$has_departure_options = ! empty( $departure_options );
 	$price_numeric     = (int) preg_replace( '/[^\d]/', '', (string) $tour_meta['price_from'] );
 	$price_display     = tam_format_tour_price( $tour_meta['price_from'] );

@@ -661,9 +661,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (checkoutUrl && tourId) {
           if (!bookingDateField || !bookingDateField.value) {
+            const missingDateMessage = "Vui l\u00f2ng ch\u1ecdn ng\u00e0y kh\u1edfi h\u00e0nh tr\u01b0\u1edbc khi \u0111\u1eb7t tour.";
             if (bookingSummary) {
-              bookingSummary.textContent = "Vui l\u00f2ng ch\u1ecdn ng\u00e0y kh\u1edfi h\u00e0nh tr\u01b0\u1edbc khi \u0111\u1eb7t tour.";
+              bookingSummary.textContent = missingDateMessage;
             }
+            if (bookingDateField) {
+              bookingDateField.scrollIntoView({ behavior: "smooth", block: "center" });
+              window.setTimeout(function () {
+                bookingDateField.focus();
+                if (typeof bookingDateField.showPicker === "function") {
+                  bookingDateField.showPicker();
+                }
+              }, 250);
+            }
+            window.alert(missingDateMessage);
             return;
           }
 
