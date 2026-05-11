@@ -1,6 +1,6 @@
 <?php
 /**
- * Template Name: Danh sach tour
+ * Template Name: Danh sách tour
  *
  * @package Travel_Agency_Modern
  */
@@ -45,7 +45,7 @@ if ( ! empty( $backend_tour_payload['success'] ) ) {
 			_n( '%s tour phu hop', '%s tour phu hop', $tour_query->found_posts, 'travel-agency-modern' ),
 			number_format_i18n( $tour_query->found_posts )
 		)
-		: __( 'Khong tim thay tour phu hop', 'travel-agency-modern' );
+		: __( 'Không tìm thấy tour phù hợp', 'travel-agency-modern' );
 	$tour_results_markup = tam_get_tour_results_markup(
 		$tour_query,
 		array(
@@ -66,9 +66,9 @@ $destinations = get_terms(
 
 tam_render_page_intro(
 	array(
-		'eyebrow'     => __( 'Danh sach tour', 'travel-agency-modern' ),
+		'eyebrow'     => __( 'Danh sách tour', 'travel-agency-modern' ),
 		'title'       => $current_page_post ? get_the_title( $current_page_post ) : __( 'Tour', 'travel-agency-modern' ),
-		'description' => $current_page_post && has_excerpt( $current_page_post ) ? get_the_excerpt( $current_page_post ) : __( 'Danh sach tour duoc ket noi truc tiep voi backend API, co bo loc rieng va phan trang de de theo doi hon.', 'travel-agency-modern' ),
+		'description' => $current_page_post && has_excerpt( $current_page_post ) ? get_the_excerpt( $current_page_post ) : __( 'Danh sách tour được kết nối trực tiếp với backend API, có bộ lọc riêng và phân trang để dễ theo dõi hơn.', 'travel-agency-modern' ),
 		'image'       => $current_page_post ? tam_get_hero_image_url( $current_page_post->ID ) : tam_get_hero_image_url(),
 	)
 );
@@ -87,13 +87,13 @@ tam_render_page_intro(
 					<div class="tam-filter-bar tam-filter-bar--stack">
 						<form class="tam-filter-bar__form tam-filter-bar__form--stack" method="get" action="<?php echo esc_url( $page_url ); ?>" data-tour-filter-form data-page-url="<?php echo esc_url( $page_url ); ?>" autocomplete="off">
 							<div class="tam-field">
-								<label for="tam-search-tour"><?php esc_html_e( 'Tim theo ten tour', 'travel-agency-modern' ); ?></label>
+								<label for="tam-search-tour"><?php esc_html_e( 'Tìm theo tên tour', 'travel-agency-modern' ); ?></label>
 								<input type="text" id="tam-search-tour" name="search_tour" value="<?php echo esc_attr( $search_term ); ?>" placeholder="<?php esc_attr_e( 'Vi du: Ha Giang, Phu Quoc...', 'travel-agency-modern' ); ?>" data-tour-search-input />
 							</div>
 							<div class="tam-field">
-								<label for="tam-destination"><?php esc_html_e( 'Loc theo diem den', 'travel-agency-modern' ); ?></label>
+								<label for="tam-destination"><?php esc_html_e( 'Lọc theo điểm đến', 'travel-agency-modern' ); ?></label>
 								<select id="tam-destination" name="destination" data-tour-destination-select>
-									<option value=""><?php esc_html_e( 'Tat ca diem den', 'travel-agency-modern' ); ?></option>
+									<option value=""><?php esc_html_e( 'Tất cả điểm đến', 'travel-agency-modern' ); ?></option>
 									<?php if ( ! is_wp_error( $destinations ) ) : ?>
 										<?php foreach ( $destinations as $destination ) : ?>
 											<option value="<?php echo esc_attr( $destination->slug ); ?>" <?php selected( $selected_dest, $destination->slug ); ?>>
@@ -106,23 +106,23 @@ tam_render_page_intro(
 							<div class="tam-filter-bar__actions tam-filter-bar__actions--stack">
 								<p class="tam-filter-bar__status" data-tour-filter-status aria-live="polite"><?php echo esc_html( $tour_status_summary ); ?></p>
 								<button class="tam-button tam-button--ghost" type="button" data-tour-filter-reset <?php disabled( '' === $search_term && '' === $selected_dest ); ?>>
-									<?php esc_html_e( 'Xoa bo loc', 'travel-agency-modern' ); ?>
+									<?php esc_html_e( 'Xóa bộ lọc', 'travel-agency-modern' ); ?>
 								</button>
 							</div>
 						</form>
 					</div>
 
 					<div class="tam-promo-card tam-promo-card--aside">
-						<span class="tam-promo-badge"><?php esc_html_e( 'Goi y nhanh', 'travel-agency-modern' ); ?></span>
-						<h3><?php esc_html_e( 'Khach chua biet di dau thuong bat dau tu diem den', 'travel-agency-modern' ); ?></h3>
+						<span class="tam-promo-badge"><?php esc_html_e( 'Gợi ý nhanh', 'travel-agency-modern' ); ?></span>
+						<h3><?php esc_html_e( 'Khách chưa biết đi đâu thường bắt đầu từ điểm đến', 'travel-agency-modern' ); ?></h3>
 						<p><?php esc_html_e( 'Ban co the dung bo loc nay de dua khach vao dung nhom tour ngay tu buoc dau.', 'travel-agency-modern' ); ?></p>
 					</div>
 
 					<div class="tam-value-card">
-						<strong><?php esc_html_e( 'Can ho tro chon tour?', 'travel-agency-modern' ); ?></strong>
-						<p><?php esc_html_e( 'Neu khach van dang phan van giua nhieu tuyen, hay dua ho sang trang lien he hoac goi hotline de rut ngan qua trinh chon.', 'travel-agency-modern' ); ?></p>
+						<strong><?php esc_html_e( 'Cần hỗ trợ chọn tour?', 'travel-agency-modern' ); ?></strong>
+						<p><?php esc_html_e( 'Neu khach van dang phan van giua nhieu tuyen, hay dua ho sang trang lien he hoặc goi hotline de rut ngan qua trinh chon.', 'travel-agency-modern' ); ?></p>
 						<div class="tam-sidebar-actions">
-							<a class="tam-button tam-button--ghost" href="<?php echo esc_url( tam_get_page_url_by_path( 'lien-he' ) ); ?>"><?php esc_html_e( 'Nhan tu van', 'travel-agency-modern' ); ?></a>
+							<a class="tam-button tam-button--ghost" href="<?php echo esc_url( tam_get_page_url_by_path( 'lien-he' ) ); ?>"><?php esc_html_e( 'Nhận tư vấn', 'travel-agency-modern' ); ?></a>
 							<a class="tam-button" href="<?php echo esc_url( $contact['tel_url'] ); ?>"><?php esc_html_e( 'Goi hotline', 'travel-agency-modern' ); ?></a>
 						</div>
 					</div>
@@ -136,8 +136,8 @@ tam_render_page_intro(
 						<div class="tam-tours-results__overlay" data-tour-results-overlay aria-hidden="true">
 							<div class="tam-tours-results__loading">
 								<span class="tam-spinner" aria-hidden="true"></span>
-								<strong><?php esc_html_e( 'Dang cap nhat tour...', 'travel-agency-modern' ); ?></strong>
-								<p><?php esc_html_e( 'He thong dang lam moi ket qua de phan hoi theo tim kiem cua ban.', 'travel-agency-modern' ); ?></p>
+								<strong><?php esc_html_e( 'Đang cập nhật tour...', 'travel-agency-modern' ); ?></strong>
+								<p><?php esc_html_e( 'Hệ thống đang làm mới kết quả để phản hồi theo tìm kiếm của bạn.', 'travel-agency-modern' ); ?></p>
 							</div>
 							<div class="tam-tour-grid tam-tour-grid--skeleton" aria-hidden="true">
 								<?php for ( $skeleton_index = 0; $skeleton_index < 6; $skeleton_index++ ) : ?>

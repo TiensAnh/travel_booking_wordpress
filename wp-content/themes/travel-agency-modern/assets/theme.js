@@ -921,7 +921,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const normalizeCheckoutMessage = function (message, fallbackMessage) {
       if (isMissingRouteMessage(message)) {
-        return checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.";
+        return checkoutMessages.backendUnavailable || "Backend checkout tạm thời chưa sẵn sàng. Vui lòng khởi động lại backend-api và tải lại trang.";
       }
 
       return message || fallbackMessage;
@@ -935,7 +935,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (summaryMessage) {
-        summaryMessage.textContent = checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.";
+        summaryMessage.textContent = checkoutMessages.backendUnavailable || "Backend checkout tạm thời chưa sẵn sàng. Vui lòng khởi động lại backend-api và tải lại trang.";
       }
 
       if (payButton) {
@@ -960,7 +960,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     const getPaymentPlanLabel = function (value) {
-      return normalizePaymentPlan(value) === "DEPOSIT" ? "Dat coc truoc" : "Thanh toan toan bo";
+      return normalizePaymentPlan(value) === "DEPOSIT" ? "Đặt cọc trước" : "Thanh toán toàn bộ";
     };
 
     const resetCheckoutSessionAttempt = function () {
@@ -1172,7 +1172,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (summaryStatus) {
-        summaryStatus.textContent = meta.statusText || "Da cap nhat";
+        summaryStatus.textContent = meta.statusText || "Đã cập nhật";
       }
 
       if (summaryMessage) {
@@ -1267,25 +1267,25 @@ document.addEventListener("DOMContentLoaded", function () {
       clearFieldError(name);
 
       if (name === "contact_name" && !state.contactName) {
-        setFieldError(name, "Vui long nhap ho ten.");
+        setFieldError(name, "Vui lòng nhập họ tên.");
         return false;
       }
 
       if (name === "contact_phone") {
         const digits = state.contactPhone.replace(/\D/g, "");
         if (!digits) {
-          setFieldError(name, "Vui long nhap so dien thoai.");
+          setFieldError(name, "Vui lòng nhập số điện thoại.");
           return false;
         }
         if (digits.length < 9 || digits.length > 15) {
-          setFieldError(name, "So dien thoai can tu 9 den 15 chu so.");
+          setFieldError(name, "Số điện thoại cần từ 9 đến 15 chữ số.");
           return false;
         }
       }
 
       if (name === "contact_email") {
         if (!state.contactEmail) {
-          setFieldError(name, "Vui long nhap email.");
+          setFieldError(name, "Vui lòng nhập email.");
           return false;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.contactEmail)) {
@@ -1295,29 +1295,29 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (name === "contact_country" && !state.contactCountry) {
-        setFieldError(name, "Vui long chon quoc gia.");
+        setFieldError(name, "Vui lòng chọn quốc gia.");
         return false;
       }
 
       if (name === "travel_date" && !state.travelDate) {
-        setFieldError(name, "Vui long chon ngay khoi hanh.");
+        setFieldError(name, "Vui lòng chọn ngày khởi hành.");
         return false;
       }
 
       if (name === "adults_count") {
         if (state.adultsCount < 1) {
-          setFieldError(name, "Can it nhat 1 nguoi lon.");
+          setFieldError(name, "Cần ít nhất 1 người lớn.");
           return false;
         }
       }
 
       if (name === "children_count") {
         if (state.childrenCount < 0) {
-          setFieldError(name, "So tre em khong hop le.");
+          setFieldError(name, "Số trẻ em không hợp lệ.");
           return false;
         }
         if (state.travellers > 30) {
-          setFieldError(name, "Tong so hanh khach toi da la 30.");
+          setFieldError(name, "Tổng số hành khách tối đa là 30.");
           return false;
         }
       }
@@ -1372,8 +1372,8 @@ document.addEventListener("DOMContentLoaded", function () {
         requestQuote({
           force: true,
           showToast: false,
-          statusText: "Da cap nhat",
-          message: "Tong thanh toan da san sang cho buoc xac nhan."
+          statusText: "Đã cập nhật",
+          message: "Tổng thanh toán đã sẵn sàng cho bước xác nhận."
         })
           .catch(function () {
             return null;
@@ -1437,7 +1437,7 @@ document.addEventListener("DOMContentLoaded", function () {
           statusText: !canCheckout ? "Can sync backend" : "Backend chua san sang",
           message: !canCheckout
             ? "Tour nay chua duoc sync sang backend, nen summary dang o che do uoc tinh."
-            : (checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.")
+            : (checkoutMessages.backendUnavailable || "Backend checkout tạm thời chưa sẵn sàng. Vui lòng khởi động lại backend-api và tải lại trang.")
         });
         cachedQuote = localSummary;
         return Promise.resolve(localSummary);
@@ -1445,8 +1445,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!settings.force && cachedQuote && signature === lastQuoteSignature) {
         renderSummary(cachedQuote, {
-          statusText: settings.statusText || "Da cap nhat",
-          message: settings.message || "Tong tien dang su dung du lieu moi nhat."
+          statusText: settings.statusText || "Đã cập nhật",
+          message: settings.message || "Tổng tiền đang sử dụng dữ liệu mới nhất."
         });
         return Promise.resolve(cachedQuote);
       }
@@ -1486,7 +1486,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
 
           if (!payload.success) {
-            const error = new Error(normalizeCheckoutMessage(payload.data && payload.data.message, checkoutMessages.genericError || "Khong the tinh gia."));
+            const error = new Error(normalizeCheckoutMessage(payload.data && payload.data.message, checkoutMessages.genericError || "Không thể tính giá."));
             error.code = payload.data && payload.data.code ? payload.data.code : "";
             throw error;
           }
@@ -1494,8 +1494,8 @@ document.addEventListener("DOMContentLoaded", function () {
           cachedQuote = (payload.data && payload.data.summary) || buildEstimatedSummary(state);
           lastQuoteSignature = signature;
           renderSummary(cachedQuote, {
-            statusText: payload.data && payload.data.couponValid === false ? "Coupon chua hop le" : "Da cap nhat",
-            message: (payload.data && payload.data.message) || "Tong thanh toan da duoc cap nhat."
+            statusText: payload.data && payload.data.couponValid === false ? "Coupon chưa hợp lệ" : "Đã cập nhật",
+            message: (payload.data && payload.data.message) || "Tổng thanh toán đã được cập nhật."
           });
 
           if (settings.showToast && payload.data && payload.data.message) {
@@ -1516,12 +1516,12 @@ document.addEventListener("DOMContentLoaded", function () {
           const fallbackSummary = buildEstimatedSummary(state);
           cachedQuote = fallbackSummary;
           renderSummary(fallbackSummary, {
-            statusText: error && error.code === "backend_route_missing" ? "Backend chua san sang" : "Uoc tinh tam thoi",
-            message: normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Khong the tinh gia luc nay.")
+            statusText: error && error.code === "backend_route_missing" ? "Backend chua san sang" : "Ước tính tạm thời",
+            message: normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Không thể tính giá lúc này.")
           });
 
           if (settings.showToast !== false) {
-            showToast(normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Khong the tinh gia luc nay."), "error");
+            showToast(normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Không thể tính giá lúc này."), "error");
           }
 
           throw error;
@@ -1536,8 +1536,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const debouncedQuote = debounce(function () {
       requestQuote({
         showToast: false,
-        statusText: "Dang cap nhat",
-        message: checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan..."
+        statusText: "Đang cập nhật",
+        message: checkoutMessages.quoteLoading || "Đang cập nhật tong thanh toan..."
       }).catch(function () {});
     }, 320);
 
@@ -1551,8 +1551,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (payLabel) {
         payLabel.textContent = isLoading
-          ? (checkoutMessages.paymentLoading || "Dang chuyen sang cong thanh toan...")
-          : "Thanh toan ngay";
+          ? (checkoutMessages.paymentLoading || "Đang chuyển sang cổng thanh toán...")
+          : "Thanh toán ngay";
       }
 
       if (payLoader) {
@@ -1571,7 +1571,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!validateStep(1)) {
         setStep(1);
-        showToast("Vui long hoan tat thong tin khach hang truoc khi thanh toan.", "error");
+        showToast("Vui lòng hoàn tất thông tin khách hàng trước khi thanh toán.", "error");
         return;
       }
 
@@ -1585,7 +1585,7 @@ document.addEventListener("DOMContentLoaded", function () {
         showToast(
           !canCheckout
             ? "Tour nay chua duoc sync sang backend checkout."
-            : (checkoutMessages.backendUnavailable || "Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang."),
+            : (checkoutMessages.backendUnavailable || "Backend checkout tạm thời chưa sẵn sàng. Vui lòng khởi động lại backend-api và tải lại trang."),
           "error"
         );
         return;
@@ -1607,7 +1607,7 @@ document.addEventListener("DOMContentLoaded", function () {
         force: true,
         showToast: false,
         statusText: "Khoa gia cuoi cung",
-        message: "Dang dong bo tong thanh toan cuoi cung truoc khi tao booking."
+        message: "Đang đồng bộ tổng thanh toán cuối cùng trước khi tạo booking."
       })
         .catch(function () {
           return null;
@@ -1649,7 +1649,7 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .then(function (payload) {
           if (!payload.success) {
-            const errorMessage = normalizeCheckoutMessage((payload.data && payload.data.message) || "", checkoutMessages.genericError || "Khong the tao booking luc nay.");
+            const errorMessage = normalizeCheckoutMessage((payload.data && payload.data.message) || "", checkoutMessages.genericError || "Không thể tạo booking lúc này.");
             const errorCode = payload.data && payload.data.code ? payload.data.code : "";
 
             if (errorCode === "login_required") {
@@ -1667,10 +1667,10 @@ document.addEventListener("DOMContentLoaded", function () {
           const redirectUrl = payload.data && payload.data.redirectUrl ? payload.data.redirectUrl : "";
 
           if (!redirectUrl) {
-            throw new Error("Khong nhan duoc dia chi redirect thanh toan.");
+            throw new Error("Không nhận được địa chỉ redirect thanh toán.");
           }
 
-          showToast((payload.data && payload.data.message) || "Dang chuyen sang cong thanh toan...", "success");
+          showToast((payload.data && payload.data.message) || "Đang chuyển sang cổng thanh toán...", "success");
           window.setTimeout(function () {
             window.location.href = redirectUrl;
           }, 220);
@@ -1678,7 +1678,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch(function (error) {
           submitLocked = false;
           setPayButtonState(false);
-          showToast(normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Khong the tao booking luc nay."), "error");
+          showToast(normalizeCheckoutMessage(error && error.message, checkoutMessages.genericError || "Không thể tạo booking lúc này."), "error");
         });
     };
 
@@ -1691,8 +1691,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (["adults_count", "children_count", "travel_date"].indexOf(field.name) > -1) {
           renderSummary(cachedQuote || buildEstimatedSummary(collectState()), {
-            statusText: "Dang cap nhat",
-            message: checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan..."
+            statusText: "Đang cập nhật",
+            message: checkoutMessages.quoteLoading || "Đang cập nhật tong thanh toan..."
           });
           debouncedQuote();
         }
@@ -1701,8 +1701,8 @@ document.addEventListener("DOMContentLoaded", function () {
       if (field.name === "contact_name" || field.name === "contact_phone" || field.name === "contact_email" || field.name === "contact_country") {
         field.addEventListener(eventName, function () {
           renderSummary(cachedQuote || buildEstimatedSummary(collectState()), {
-            statusText: "Da cap nhat",
-            message: "Thong tin lien he da duoc luu tam cho buoc xac nhan."
+            statusText: "Đã cập nhật",
+            message: "Thông tin liên hệ đã được lưu tạm cho bước xác nhận."
           });
         });
       }
@@ -1718,8 +1718,8 @@ document.addEventListener("DOMContentLoaded", function () {
       field.addEventListener("change", function () {
         updatePaymentSelection();
         renderSummary(cachedQuote || buildEstimatedSummary(collectState()), {
-          statusText: "Dang cap nhat",
-          message: checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan..."
+          statusText: "Đang cập nhật",
+          message: checkoutMessages.quoteLoading || "Đang cập nhật tong thanh toan..."
         });
         debouncedQuote();
       });
@@ -1809,9 +1809,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     updatePaymentSelection();
     renderSummary(buildEstimatedSummary(collectState()), {
-      statusText: canCheckout ? "Dang dong bo" : "Uoc tinh tam thoi",
+      statusText: canCheckout ? "Đang đồng bộ" : "Ước tính tạm thời",
       message: canCheckout
-        ? (checkoutMessages.quoteLoading || "Dang cap nhat tong thanh toan...")
+        ? (checkoutMessages.quoteLoading || "Đang cập nhật tong thanh toan...")
         : "Tour nay chua sync sang backend, summary dang hien thi o che do uoc tinh."
     });
 

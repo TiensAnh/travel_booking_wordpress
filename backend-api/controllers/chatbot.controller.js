@@ -67,14 +67,14 @@ exports.sendMessage = async (req, res) => {
   const { message } = req.body;
 
   if (!message || !String(message).trim()) {
-    return res.status(400).json({ message: 'Vui long nhap noi dung tin nhan.' });
+    return res.status(400).json({ message: 'Vui lòng nhập nội dung tin nhắn.' });
   }
 
   try {
     const reply = findReply(String(message));
 
     return res.status(200).json({
-      message: 'Nhan phan hoi thanh cong.',
+      message: 'Nhan phan hoi thành công.',
       data: {
         userMessage: String(message).trim(),
         reply,

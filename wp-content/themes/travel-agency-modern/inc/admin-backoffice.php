@@ -61,8 +61,8 @@ function tam_backend_admin_pages() {
 			'protected'  => true,
 		),
 		'tam-admin-payments'  => array(
-			'label'      => __( 'Payments', 'travel-agency-modern' ),
-			'menu_title' => __( 'Payments', 'travel-agency-modern' ),
+			'label'      => __( 'Statistics', 'travel-agency-modern' ),
+			'menu_title' => __( 'Statistics', 'travel-agency-modern' ),
 			'icon'       => 'dashicons-money-alt',
 			'protected'  => true,
 		),
@@ -359,7 +359,7 @@ function tam_backend_admin_ensure_admin_table() {
 	if ( '' === $admins_table ) {
 		return new WP_Error(
 			'tam_backend_admin_table_missing',
-			__( 'Khong tim thay bang admins cua backend-api. Hay kiem tra backend-api/.env va schema backend.', 'travel-agency-modern' )
+			__( 'Không tìm thấy bảng admins của backend-api. Hãy kiểm tra backend-api/.env và schema backend.', 'travel-agency-modern' )
 		);
 	}
 
@@ -379,7 +379,7 @@ function tam_backend_admin_ensure_admin_table() {
 			'tam_backend_admin_table_create_failed',
 			sprintf(
 				/* translators: %s: MySQL error message. */
-				__( 'WordPress khong the chuan bi bang admins cua backend: %s', 'travel-agency-modern' ),
+				__( 'WordPress không thể chuẩn bị bảng admins của backend: %s', 'travel-agency-modern' ),
 				$wpdb->last_error
 			)
 		);
@@ -441,7 +441,7 @@ function tam_backend_admin_get_or_create_backend_admin( $wp_user ) {
 	if ( '' === $email ) {
 		return new WP_Error(
 			'tam_backend_admin_email_missing',
-			__( 'Tai khoan WordPress admin chua co email hop le de dong bo voi backend.', 'travel-agency-modern' )
+			__( 'Tài khoản WordPress admin chưa có email hợp lệ để đồng bộ với backend.', 'travel-agency-modern' )
 		);
 	}
 
@@ -494,7 +494,7 @@ function tam_backend_admin_get_or_create_backend_admin( $wp_user ) {
 	if ( false === $password_hash ) {
 		return new WP_Error(
 			'tam_backend_admin_password_failed',
-			__( 'Khong the tao mat khau backend tam thoi cho WordPress admin.', 'travel-agency-modern' )
+			__( 'Không thể tạo mật khẩu backend tạm thời cho WordPress admin.', 'travel-agency-modern' )
 		);
 	}
 
@@ -511,7 +511,7 @@ function tam_backend_admin_get_or_create_backend_admin( $wp_user ) {
 	if ( false === $inserted || ! empty( $wpdb->last_error ) ) {
 		$error = new WP_Error(
 			'tam_backend_admin_insert_failed',
-			$wpdb->last_error ? $wpdb->last_error : __( 'Khong the tao admin backend tu dong.', 'travel-agency-modern' )
+			$wpdb->last_error ? $wpdb->last_error : __( 'Không thể tạo admin backend tự động.', 'travel-agency-modern' )
 		);
 		$wpdb->last_error = '';
 		return $error;
@@ -533,13 +533,13 @@ function tam_backend_admin_get_or_create_backend_admin( $wp_user ) {
  */
 function tam_backend_admin_ensure_auto_session( $force_refresh = false ) {
 	if ( ! current_user_can( 'manage_options' ) ) {
-		return new WP_Error( 'tam_backend_admin_forbidden', __( 'Ban khong co quyen truy cap admin backend.', 'travel-agency-modern' ) );
+		return new WP_Error( 'tam_backend_admin_forbidden', __( 'Bạn không có quyền truy cập admin backend.', 'travel-agency-modern' ) );
 	}
 
 	$wp_user = wp_get_current_user();
 
 	if ( ! ( $wp_user instanceof WP_User ) || ! $wp_user->exists() ) {
-		return new WP_Error( 'tam_backend_admin_wp_user_missing', __( 'Khong tim thay tai khoan WordPress admin hien tai.', 'travel-agency-modern' ) );
+		return new WP_Error( 'tam_backend_admin_wp_user_missing', __( 'Không tìm thấy tài khoản WordPress admin hiện tại.', 'travel-agency-modern' ) );
 	}
 
 	$profile = tam_backend_admin_get_profile();
@@ -555,7 +555,7 @@ function tam_backend_admin_ensure_auto_session( $force_refresh = false ) {
 	if ( '' === $secret ) {
 		$error = new WP_Error(
 			'tam_backend_admin_secret_missing',
-			__( 'Khong tim thay JWT_SECRET trong backend-api/.env nen khong the dong bo admin tu dong.', 'travel-agency-modern' )
+			__( 'Không tìm thấy JWT_SECRET trong backend-api/.env nên không thể đồng bộ admin tự động.', 'travel-agency-modern' )
 		);
 		tam_backend_admin_set_runtime_connection_error( $error );
 		return $error;
@@ -1804,7 +1804,7 @@ function tam_backend_admin_render_shell( $page_slug, $renderer ) {
 			: __( 'WordPress admin chua the dong bo tai khoan backend tu dong. Hay kiem tra backend-api/.env, JWT_SECRET va database backend.', 'travel-agency-modern' );
 
 		tam_backend_admin_render_empty_state(
-			__( 'Khong the dong bo admin backend', 'travel-agency-modern' ),
+			__( 'Không thể đồng bộ admin backend', 'travel-agency-modern' ),
 			$description,
 			tam_backend_admin_page_url( 'tam-admin-connect' ),
 			__( 'Xem trang thai backend', 'travel-agency-modern' )
@@ -2947,18 +2947,18 @@ function tam_backend_admin_render_connect_page() {
 
 			echo '<section class="tam-admin-grid tam-admin-grid--2">';
 			echo '<article class="tam-admin-card">';
-			echo '<div class="tam-admin-card__head"><h3>' . esc_html__( 'Trang thai backend admin', 'travel-agency-modern' ) . '</h3></div>';
+			echo '<div class="tam-admin-card__head"><h3>' . esc_html__( 'Trạng thái backend admin', 'travel-agency-modern' ) . '</h3></div>';
 
 			if ( ! empty( $profile['email'] ) ) {
 				echo '<div class="tam-admin-kv">';
 				echo '<div><span>' . esc_html__( 'WordPress admin', 'travel-agency-modern' ) . '</span><strong>' . esc_html( wp_get_current_user()->display_name ) . '</strong></div>';
 				echo '<div><span>' . esc_html__( 'Email dong bo', 'travel-agency-modern' ) . '</span><strong>' . esc_html( $profile['email'] ) . '</strong></div>';
-				echo '<div><span>' . esc_html__( 'Tai khoan backend', 'travel-agency-modern' ) . '</span><strong>' . esc_html( $profile['name'] ) . '</strong></div>';
-				echo '<div><span>' . esc_html__( 'Che do xac thuc', 'travel-agency-modern' ) . '</span><strong>' . esc_html__( 'Tu dong theo phien WordPress admin', 'travel-agency-modern' ) . '</strong></div>';
+				echo '<div><span>' . esc_html__( 'Tài khoản backend', 'travel-agency-modern' ) . '</span><strong>' . esc_html( $profile['name'] ) . '</strong></div>';
+				echo '<div><span>' . esc_html__( 'Chế độ xác thực', 'travel-agency-modern' ) . '</span><strong>' . esc_html__( 'Tự động theo phiên WordPress admin', 'travel-agency-modern' ) . '</strong></div>';
 				echo '</div>';
-				echo '<p class="tam-admin-muted">' . esc_html__( 'Khu quan tri nay khong can dang nhap backend rieng nua. Moi request se duoc dong bo tu dong tu tai khoan WordPress admin hien tai.', 'travel-agency-modern' ) . '</p>';
+				echo '<p class="tam-admin-muted">' . esc_html__( 'Khu quản trị này không cần đăng nhập backend riêng nữa. Mọi request sẽ được đồng bộ tự động từ tài khoản WordPress admin hiện tại.', 'travel-agency-modern' ) . '</p>';
 			} else {
-				echo '<p class="tam-admin-muted">' . esc_html__( 'He thong dang co gang dong bo tai khoan backend tu dong cho WordPress admin hien tai.', 'travel-agency-modern' ) . '</p>';
+				echo '<p class="tam-admin-muted">' . esc_html__( 'Hệ thống đang cố gắng đồng bộ tài khoản backend tự động cho WordPress admin hiện tại.', 'travel-agency-modern' ) . '</p>';
 			}
 
 			echo '</article>';
@@ -2968,13 +2968,13 @@ function tam_backend_admin_render_connect_page() {
 			if ( $error instanceof WP_Error ) {
 				echo '<div class="notice notice-error inline tam-admin-notice"><p>' . esc_html( $error->get_error_message() ) . '</p></div>';
 			} else {
-				echo '<div class="notice notice-success inline tam-admin-notice"><p>' . esc_html__( 'Backend admin dang san sang va duoc cap token tu dong.', 'travel-agency-modern' ) . '</p></div>';
+				echo '<div class="notice notice-success inline tam-admin-notice"><p>' . esc_html__( 'Backend admin đang sẵn sàng và được cấp token tự động.', 'travel-agency-modern' ) . '</p></div>';
 			}
 
 			echo '<ul class="tam-admin-bullets">';
-			echo '<li>' . esc_html__( 'Khong con form dang nhap hay dang ky backend trong wp-admin.', 'travel-agency-modern' ) . '</li>';
+			echo '<li>' . esc_html__( 'Không còn form đăng nhập hay đăng ký backend trong wp-admin.', 'travel-agency-modern' ) . '</li>';
 			echo '<li>' . esc_html__( 'Neu backend loi, hay kiem tra backend-api/.env, JWT_SECRET, bang admins va server Node.', 'travel-agency-modern' ) . '</li>';
-			echo '<li>' . esc_html__( 'Neu can tai lai phien, chi can refresh trang hoac dang nhap lai WordPress admin.', 'travel-agency-modern' ) . '</li>';
+			echo '<li>' . esc_html__( 'Nếu cần tải lại phiên, chỉ cần refresh trang hoặc đăng nhập lại WordPress admin.', 'travel-agency-modern' ) . '</li>';
 			echo '</ul>';
 			echo '</article>';
 			echo '</section>';
@@ -3688,19 +3688,19 @@ function tam_backend_admin_render_payments_page() {
 			}
 
 			echo '<section class="tam-admin-stats">';
-			tam_backend_admin_render_stat_card( __( 'Tổng payment', 'travel-agency-modern' ), number_format_i18n( count( $payments ) ) );
+			tam_backend_admin_render_stat_card( __( 'Tổng giao dịch', 'travel-agency-modern' ), number_format_i18n( count( $payments ) ) );
 			tam_backend_admin_render_stat_card( __( 'Đang chờ xác nhận', 'travel-agency-modern' ), number_format_i18n( $pending ) );
 			tam_backend_admin_render_stat_card( __( 'Đã thành công', 'travel-agency-modern' ), number_format_i18n( $success ) );
 			tam_backend_admin_render_stat_card( __( 'Tổng giá trị', 'travel-agency-modern' ), tam_backend_admin_format_amount( $total ) );
 			echo '</section>';
 
 			echo '<section class="tam-admin-card">';
-			echo '<div class="tam-admin-card__head"><h3>' . esc_html__( 'Payments & transactions', 'travel-agency-modern' ) . '</h3></div>';
+			echo '<div class="tam-admin-card__head"><h3>' . esc_html__( 'Statistics', 'travel-agency-modern' ) . '</h3></div>';
 			echo '<form method="get" class="tam-admin-toolbar"><input type="hidden" name="page" value="tam-admin-payments" /><input type="search" name="s" value="' . esc_attr( $search ) . '" placeholder="' . esc_attr__( 'Tìm theo khách, tour, method, trạng thái...', 'travel-agency-modern' ) . '" /><select name="status"><option value="">' . esc_html__( 'Tất cả trạng thái', 'travel-agency-modern' ) . '</option><option value="PENDING" ' . selected( $status, 'PENDING', false ) . '>Pending</option><option value="SUCCESS" ' . selected( $status, 'SUCCESS', false ) . '>Success</option><option value="FAILED" ' . selected( $status, 'FAILED', false ) . '>Failed</option></select><select name="method"><option value="">' . esc_html__( 'Tất cả phương thức', 'travel-agency-modern' ) . '</option><option value="CASH" ' . selected( $method, 'CASH', false ) . '>Cash</option><option value="BANK_TRANSFER" ' . selected( $method, 'BANK_TRANSFER', false ) . '>Bank transfer</option><option value="MOMO" ' . selected( $method, 'MOMO', false ) . '>MoMo</option><option value="VNPAY" ' . selected( $method, 'VNPAY', false ) . '>VNPay</option><option value="CARD" ' . selected( $method, 'CARD', false ) . '>Card</option></select><button type="submit" class="button button-secondary">' . esc_html__( 'Lọc', 'travel-agency-modern' ) . '</button></form>';
 			echo '<table class="widefat striped tam-admin-table"><thead><tr><th>ID</th><th>' . esc_html__( 'Khách hàng', 'travel-agency-modern' ) . '</th><th>' . esc_html__( 'Tour', 'travel-agency-modern' ) . '</th><th>' . esc_html__( 'Method', 'travel-agency-modern' ) . '</th><th>' . esc_html__( 'Số tiền', 'travel-agency-modern' ) . '</th><th>' . esc_html__( 'Trạng thái', 'travel-agency-modern' ) . '</th><th>' . esc_html__( 'Hành động', 'travel-agency-modern' ) . '</th></tr></thead><tbody>';
 
 			if ( empty( $pagination['items'] ) ) {
-				echo '<tr><td colspan="7">' . esc_html__( 'Không có payment phù hợp.', 'travel-agency-modern' ) . '</td></tr>';
+				echo '<tr><td colspan="7">' . esc_html__( 'Không có giao dịch phù hợp.', 'travel-agency-modern' ) . '</td></tr>';
 			} else {
 				foreach ( $pagination['items'] as $payment ) {
 					$current_status = isset( $payment['status'] ) ? (string) $payment['status'] : '';
@@ -3766,7 +3766,7 @@ function tam_backend_admin_handle_auth_action() {
 
 	tam_backend_admin_redirect_notice(
 		TAM_BACKEND_ADMIN_MENU_SLUG,
-		__( 'Dang nhap backend rieng trong wp-admin da bi go. He thong nay chi dung phien WordPress admin.', 'travel-agency-modern' ),
+		__( 'Đăng nhập backend riêng trong wp-admin đã bị gỡ. Hệ thống này chỉ dùng phiên WordPress admin.', 'travel-agency-modern' ),
 		'warning'
 	);
 

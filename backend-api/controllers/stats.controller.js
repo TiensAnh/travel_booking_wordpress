@@ -68,7 +68,7 @@ exports.getDashboard = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay thong ke dashboard thanh cong.',
+      message: 'Lấy thống kê dashboard thành công.',
       stats: {
         tours: {
           total: Number(tourStats.total_tours || 0),
@@ -93,6 +93,6 @@ exports.getDashboard = async (req, res) => {
       recentBookings,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay thong ke luc nay.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy thống kê lúc này.', error: error.message });
   }
 };

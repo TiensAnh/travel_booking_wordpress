@@ -138,11 +138,11 @@ function tam_enqueue_assets() {
 			'checkoutSessionNonce'  => wp_create_nonce( 'tam_checkout_create_session' ),
 			'checkoutInvoiceAction' => 'tam_download_checkout_invoice',
 			'checkoutMessages'      => array(
-				'genericError'   => __( 'He thong dang ban, vui long thu lai sau it phut.', 'travel-agency-modern' ),
-				'quoteLoading'   => __( 'Dang cap nhat tong thanh toan...', 'travel-agency-modern' ),
-				'paymentLoading' => __( 'Dang tao booking va chuyen sang cong thanh toan...', 'travel-agency-modern' ),
-				'loginRequired'  => __( 'Ban can dang nhap truoc khi thanh toan.', 'travel-agency-modern' ),
-				'backendUnavailable' => __( 'Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.', 'travel-agency-modern' ),
+				'genericError'   => __( 'Hệ thống đang bận, vui lòng thử lại sau ít phút.', 'travel-agency-modern' ),
+				'quoteLoading'   => __( 'Đang cập nhật tổng thanh toán...', 'travel-agency-modern' ),
+				'paymentLoading' => __( 'Đang tạo booking và chuyển sang cổng thanh toán...', 'travel-agency-modern' ),
+				'loginRequired'  => __( 'Bạn cần đăng nhập trước khi thanh toán.', 'travel-agency-modern' ),
+				'backendUnavailable' => __( 'Backend checkout tạm thời chưa sẵn sàng. Vui lòng khởi động lại backend-api và tải lại trang.', 'travel-agency-modern' ),
 			),
 		)
 	);
@@ -1676,7 +1676,7 @@ function tam_get_checkout_payment_methods() {
 	return array(
 		'vnpay'   => array(
 			'label'       => __( 'VNPay', 'travel-agency-modern' ),
-			'description' => __( 'Thanh toan qua cong VNPay voi trai nghiem redirect nhanh, quen thuoc va tin cay.', 'travel-agency-modern' ),
+			'description' => __( 'Thanh toán qua cổng VNPay với trải nghiệm redirect nhanh, quen thuộc và tin cậy.', 'travel-agency-modern' ),
 			'icon'        => 'VNPAY',
 			'icon_class'  => 'fa-solid fa-wallet',
 			'tone'        => '#0f7cff',
@@ -1684,7 +1684,7 @@ function tam_get_checkout_payment_methods() {
 		),
 		'momo'    => array(
 			'label'       => __( 'MoMo', 'travel-agency-modern' ),
-			'description' => __( 'Phu hop mobile-first, thanh toan trong vai thao tac va nhan thong bao nhanh.', 'travel-agency-modern' ),
+			'description' => __( 'Phù hợp mobile-first, thanh toán trong vài thao tác và nhận thông báo nhanh.', 'travel-agency-modern' ),
 			'icon'        => 'MOMO',
 			'icon_class'  => 'fa-solid fa-mobile-screen-button',
 			'tone'        => '#b0006d',
@@ -1700,14 +1700,14 @@ function tam_get_checkout_payment_methods() {
 		),
 		'bank'    => array(
 			'label'       => __( 'Chuyen khoan ngan hang', 'travel-agency-modern' ),
-			'description' => __( 'Phu hop voi booking gia tri lon, hien thi thong tin tai khoan de doi soat de dang.', 'travel-agency-modern' ),
+			'description' => __( 'Phù hợp với booking giá trị lớn, hiển thị thông tin tài khoản để đối soát dễ dàng.', 'travel-agency-modern' ),
 			'icon'        => 'BANK',
 			'icon_class'  => 'fa-solid fa-building-columns',
 			'tone'        => '#1a7f64',
 			'badge'       => __( 'Doanh nghiep', 'travel-agency-modern' ),
 		),
 		'card'    => array(
-			'label'       => __( 'The quoc te', 'travel-agency-modern' ),
+			'label'       => __( 'Thẻ quốc tế', 'travel-agency-modern' ),
 			'description' => __( 'Visa, Mastercard, JCB va cac loai the quoc te khac cho khach nuoc ngoai.', 'travel-agency-modern' ),
 			'icon'        => 'CARD',
 			'icon_class'  => 'fa-regular fa-credit-card',
@@ -2847,7 +2847,7 @@ function tam_get_tour_query_args( $search_term = '', $selected_dest = '', $paged
 	$query_args = array(
 		'post_type'      => 'tour',
 		'post_status'    => 'publish',
-		'posts_per_page' => 10,
+		'posts_per_page' => 9,
 		'paged'          => max( 1, (int) $paged ),
 		's'              => sanitize_text_field( $search_term ),
 	);

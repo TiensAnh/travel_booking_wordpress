@@ -28,12 +28,12 @@ exports.getAllUsers = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach nguoi dung thanh cong.',
+      message: 'Lấy danh sách người dùng thành công.',
       total: rows.length,
       users: rows,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay danh sach nguoi dung.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy danh sách người dùng.', error: error.message });
   }
 };
 
@@ -43,7 +43,7 @@ exports.getUserById = async (req, res) => {
   const userId = Number(req.params.id);
 
   if (!Number.isInteger(userId) || userId <= 0) {
-    return res.status(400).json({ message: 'Ma nguoi dung khong hop le.' });
+    return res.status(400).json({ message: 'Mã người dùng không hợp lệ.' });
   }
 
   try {
@@ -53,7 +53,7 @@ exports.getUserById = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay nguoi dung.' });
+      return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
     }
 
     // Lấy lịch sử booking của user này
@@ -69,11 +69,11 @@ exports.getUserById = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay chi tiet nguoi dung thanh cong.',
+      message: 'Lấy chi tiết người dùng thành công.',
       user: { ...rows[0], bookings },
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay chi tiet nguoi dung.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy chi tiết người dùng.', error: error.message });
   }
 };
 
@@ -84,13 +84,13 @@ exports.updateUserRole = async (req, res) => {
   const { role } = req.body;
 
   if (!Number.isInteger(userId) || userId <= 0) {
-    return res.status(400).json({ message: 'Ma nguoi dung khong hop le.' });
+    return res.status(400).json({ message: 'Mã người dùng không hợp lệ.' });
   }
 
   const allowedRoles = ['USER', 'STAFF'];
   if (!role || !allowedRoles.includes(String(role).toUpperCase())) {
     return res.status(400).json({
-      message: `Role khong hop le. Cho phep: ${allowedRoles.join(', ')}`,
+      message: `Role không hợp lệ. Cho phép: ${allowedRoles.join(', ')}`,
     });
   }
 
@@ -98,14 +98,14 @@ exports.updateUserRole = async (req, res) => {
     const [rows] = await db.query('SELECT id FROM users WHERE id = ? LIMIT 1', [userId]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay nguoi dung.' });
+      return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
     }
 
     await db.query('UPDATE users SET role = ? WHERE id = ?', [role.toUpperCase(), userId]);
 
-    return res.status(200).json({ message: 'Cap nhat role nguoi dung thanh cong.' });
+    return res.status(200).json({ message: 'Cập nhật role người dùng thành công.' });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the cap nhat role.', error: error.message });
+    return res.status(500).json({ message: 'Không thể cập nhật role.', error: error.message });
   }
 };
 
@@ -115,14 +115,14 @@ exports.deleteUser = async (req, res) => {
   const userId = Number(req.params.id);
 
   if (!Number.isInteger(userId) || userId <= 0) {
-    return res.status(400).json({ message: 'Ma nguoi dung khong hop le.' });
+    return res.status(400).json({ message: 'Mã người dùng không hợp lệ.' });
   }
 
   try {
     const [rows] = await db.query('SELECT id FROM users WHERE id = ? LIMIT 1', [userId]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay nguoi dung.' });
+      return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
     }
 
     // Kiểm tra user có booking đang active không
@@ -133,14 +133,14 @@ exports.deleteUser = async (req, res) => {
 
     if (Number(activeBookings[0]?.total || 0) > 0) {
       return res.status(409).json({
-        message: 'Nguoi dung con booking dang hoat dong, khong the xoa.',
+        message: 'Người dùng còn booking đang hoạt động, không thể xóa.',
       });
     }
 
     await db.query('DELETE FROM users WHERE id = ?', [userId]);
 
-    return res.status(200).json({ message: 'Xoa nguoi dung thanh cong.' });
+    return res.status(200).json({ message: 'Xoa nguoi dung thành công.' });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the xoa nguoi dung.', error: error.message });
+    return res.status(500).json({ message: 'Không thể xóa người dùng.', error: error.message });
   }
 };

@@ -27,7 +27,7 @@ while ( have_posts() ) :
 	$intro_text = $api_description !== ''
 		? $api_description
 		: ( has_excerpt() ? get_the_excerpt() : wp_strip_all_tags( get_post_field( 'post_content', get_the_ID() ) ) );
-	// Rating lay tu backend API (average_rating, total_reviews) — khong hardcode.
+	// Rating lấy từ backend API (average_rating, total_reviews) — không hardcode.
 	$api_tour_id       = function_exists( 'tam_backend_api_get_tour_id_for_post' ) ? tam_backend_api_get_tour_id_for_post( get_the_ID() ) : 0;
 	$api_average_rating = $api_tour_id > 0 ? (float) get_post_meta( get_the_ID(), '_tam_api_average_rating', true ) : 0;
 	$api_total_reviews  = $api_tour_id > 0 ? (int) get_post_meta( get_the_ID(), '_tam_api_total_reviews', true ) : 0;

@@ -255,7 +255,7 @@ function normalizeItinerary(body = {}) {
           const matchedDay = label.match(/^(ngày|ngay|day)\s*([0-9]+)\s*[:\-–]\s*(.+)$/iu);
 
           if (matchedDay) {
-            label = `Ngay ${matchedDay[2]}`;
+            label = `Ngày ${matchedDay[2]}`;
             title = normalizeText(matchedDay[3]);
             description = title;
           }
@@ -264,7 +264,7 @@ function normalizeItinerary(body = {}) {
         }
 
         if (!label) {
-          label = `Ngay ${index + 1}`;
+          label = `Ngày ${index + 1}`;
         }
 
         if (!title) {
@@ -284,7 +284,7 @@ function normalizeItinerary(body = {}) {
 
   const fallbackItems = [body.dayOne, body.dayTwo, body.dayThree]
     .map((item, index) => ({
-      label: `Ngay ${index + 1}`,
+      label: `Ngày ${index + 1}`,
       title: `Lich trinh ${index + 1}`,
       description: normalizeText(item),
     }))
@@ -437,7 +437,7 @@ function getRequestPayload(req) {
 
       if (!parsedPayload || typeof parsedPayload !== 'object' || Array.isArray(parsedPayload)) {
         return {
-          error: 'Du lieu tour gui len khong hop le.',
+          error: 'Dữ liệu tour gửi lên không hợp lệ.',
         };
       }
 
@@ -445,7 +445,7 @@ function getRequestPayload(req) {
       Object.assign(requestBody, parsedPayload);
     } catch (error) {
       return {
-        error: 'Du lieu tour gui len khong hop le.',
+        error: 'Dữ liệu tour gửi lên không hợp lệ.',
       };
     }
   }
@@ -529,11 +529,11 @@ function buildWritePayload(body = {}, adminId = null) {
   const validationErrors = {};
 
   if (!title) {
-    validationErrors.title = 'Vui long nhap ten tour.';
+    validationErrors.title = 'Vui lòng nhập tên tour.';
   }
 
   if (!location) {
-    validationErrors.location = 'Vui long nhap dia diem.';
+    validationErrors.location = 'Vui lòng nhập địa điểm.';
   }
 
   if (!duration) {
@@ -835,8 +835,8 @@ exports.getTours = async (req, res) => {
   const requestedLocation = normalizeText(req.query.location || req.query.destination);
   const requestedStatus = normalizeText(req.query.status);
 
-  // Phân trang: mặc định 8 tours/trang, số trang lấy động từ DB
-  const LIMIT = Math.min(parsePositiveInteger(req.query.limit) || 10, 500);
+  // Phân trang: mặc định 9 tours/trang, số trang lấy động từ DB
+  const LIMIT = Math.min(parsePositiveInteger(req.query.limit) || 9, 500);
   const page = Math.max(1, parsePositiveInteger(req.query.page) || 1);
   const offset = (page - 1) * LIMIT;
 
@@ -877,7 +877,7 @@ exports.getTours = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach tour thanh cong.',
+      message: 'Lấy danh sách tour thành công.',
       pagination: {
         total,          // tổng số tours trong DB
         page,           // trang hiện tại
@@ -890,7 +890,7 @@ exports.getTours = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay danh sach tour luc nay.',
+      message: 'Không thể lấy danh sách tour lúc này.',
       error: error.message,
     });
   }
@@ -901,7 +901,7 @@ exports.getTourById = async (req, res) => {
 
   if (!Number.isInteger(tourId) || tourId <= 0) {
     return res.status(400).json({
-      message: 'Ma tour khong hop le.',
+      message: 'Mã tour không hợp lệ.',
     });
   }
 
@@ -911,17 +911,17 @@ exports.getTourById = async (req, res) => {
 
     if (!tour) {
       return res.status(404).json({
-        message: 'Khong tim thay tour.',
+        message: 'Không tìm thấy tour.',
       });
     }
 
     return res.status(200).json({
-      message: 'Lay chi tiet tour thanh cong.',
+      message: 'Lấy chi tiết tour thành công.',
       tour,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay chi tiet tour luc nay.',
+      message: 'Không thể lấy chi tiết tour lúc này.',
       error: error.message,
     });
   }
@@ -961,13 +961,13 @@ exports.createTour = async (req, res) => {
     const createdTour = await getExistingTour(insertResult.insertId, columnSet);
 
     return res.status(201).json({
-      message: 'Tao tour thanh cong.',
+      message: 'Tạo tour thành công.',
       tour: createdTour,
     });
   } catch (error) {
     await removeUploadedFile(uploadedFiles);
     return res.status(500).json({
-      message: 'Khong the tao tour luc nay.',
+      message: 'Không thể tạo tour lúc này.',
       error: error.message,
     });
   }
@@ -980,7 +980,7 @@ exports.updateTour = async (req, res) => {
   if (!Number.isInteger(tourId) || tourId <= 0) {
     await removeUploadedFile(uploadedFiles);
     return res.status(400).json({
-      message: 'Ma tour khong hop le.',
+      message: 'Mã tour không hợp lệ.',
     });
   }
 
@@ -1010,7 +1010,7 @@ exports.updateTour = async (req, res) => {
     if (!existingTour) {
       await removeUploadedFile(uploadedFiles);
       return res.status(404).json({
-        message: 'Khong tim thay tour de cap nhat.',
+        message: 'Không tìm thấy tour để cập nhật.',
       });
     }
 
@@ -1022,13 +1022,13 @@ exports.updateTour = async (req, res) => {
     const updatedTour = await getExistingTour(tourId, columnSet);
 
     return res.status(200).json({
-      message: 'Cap nhat tour thanh cong.',
+      message: 'Cập nhật tour thành công.',
       tour: updatedTour,
     });
   } catch (error) {
     await removeUploadedFile(uploadedFiles);
     return res.status(500).json({
-      message: 'Khong the cap nhat tour luc nay.',
+      message: 'Không thể cập nhật tour lúc này.',
       error: error.message,
     });
   }
@@ -1039,7 +1039,7 @@ exports.deleteTour = async (req, res) => {
 
   if (!Number.isInteger(tourId) || tourId <= 0) {
     return res.status(400).json({
-      message: 'Ma tour khong hop le.',
+      message: 'Mã tour không hợp lệ.',
     });
   }
 
@@ -1051,7 +1051,7 @@ exports.deleteTour = async (req, res) => {
 
     if (Number(bookings[0]?.total || 0) > 0) {
       return res.status(409).json({
-        message: 'Tour da co booking, khong the xoa. Hay chuyen trang thai sang Closed de an tour.',
+        message: 'Tour đã có booking, không thể xóa. Hãy chuyển trạng thái sang Closed để ẩn tour.',
       });
     }
 
@@ -1059,16 +1059,16 @@ exports.deleteTour = async (req, res) => {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
-        message: 'Khong tim thay tour de xoa.',
+        message: 'Không tìm thấy tour để xóa.',
       });
     }
 
     return res.status(200).json({
-      message: 'Xoa tour thanh cong.',
+      message: 'Xoa tour thành công.',
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the xoa tour luc nay.',
+      message: 'Không thể xóa tour lúc này.',
       error: error.message,
     });
   }

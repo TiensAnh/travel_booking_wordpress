@@ -20,7 +20,7 @@ const PAYMENT_METHODS = {
   VNPAY: {
     label: 'VNPay',
     tone: '#0f7cff',
-    note: 'Thanh toan nhanh qua cong VNPay.',
+    note: 'Thanh toán nhanh qua cong VNPay.',
   },
   MOMO: {
     label: 'MoMo',
@@ -30,15 +30,15 @@ const PAYMENT_METHODS = {
   ZALOPAY: {
     label: 'ZaloPay',
     tone: '#0068ff',
-    note: 'Thanh toan qua he sinh thai ZaloPay.',
+    note: 'Thanh toán qua he sinh thai ZaloPay.',
   },
   BANK_TRANSFER: {
     label: 'Chuyen khoan ngan hang',
     tone: '#1a7f64',
-    note: 'Xac nhan chuyen khoan voi tai khoan doanh nghiep ADN Travel.',
+    note: 'Xác nhận chuyển khoản với tài khoản doanh nghiệp ADN Travel.',
   },
   CARD: {
-    label: 'The quoc te',
+    label: 'Thẻ quốc tế',
     tone: '#6a42ff',
     note: 'Visa, Mastercard, JCB, AmEx.',
   },
@@ -851,15 +851,15 @@ exports.previewQuote = async (req, res) => {
   const couponCode = normalizeCouponCode(req.body.coupon_code || req.body.couponCode);
 
   if (!Number.isInteger(tourId) || tourId <= 0) {
-    return res.status(400).json({ message: 'Tour khong hop le.' });
+    return res.status(400).json({ message: 'Tour không hợp lệ.' });
   }
 
   if (!travelDate) {
-    return res.status(400).json({ message: 'Vui long chon ngay khoi hanh.' });
+    return res.status(400).json({ message: 'Vui lòng chọn ngày khởi hành.' });
   }
 
   if (adultsCount === null || childrenCount === null) {
-    return res.status(400).json({ message: 'So luong hanh khach khong hop le.' });
+    return res.status(400).json({ message: 'Số lượng hành khách không hợp lệ.' });
   }
 
   const totalTravellers = adultsCount + childrenCount;
@@ -874,7 +874,7 @@ exports.previewQuote = async (req, res) => {
     const tour = await getTourById(tourId);
 
     if (!tour) {
-      return res.status(404).json({ message: 'Khong tim thay tour.' });
+      return res.status(404).json({ message: 'Không tìm thấy tour.' });
     }
 
     if (tour.status !== 'Active') {
@@ -893,7 +893,7 @@ exports.previewQuote = async (req, res) => {
 
     if (couponCode && !coupon) {
       return res.status(200).json({
-        message: 'Ma giam gia khong hop le hoac da het han.',
+        message: 'Mã giảm giá không hợp lệ hoặc đã hết hạn.',
         summary,
         couponValid: false,
       });
@@ -901,7 +901,7 @@ exports.previewQuote = async (req, res) => {
 
     if (couponCode && !quote.discountAmount) {
       return res.status(200).json({
-        message: 'Ma giam gia hop le nhung chua du dieu kien ap dung cho don nay.',
+        message: 'Mã giảm giá hợp lệ nhưng chưa đủ điều kiện áp dụng cho đơn này.',
         summary,
         couponValid: false,
       });
@@ -909,14 +909,14 @@ exports.previewQuote = async (req, res) => {
 
     return res.status(200).json({
       message: couponCode && quote.discountAmount
-        ? `Da ap dung ma ${couponCode} thanh cong.`
-        : 'Tinh tong thanh toan thanh cong.',
+        ? `Đã áp dụng mã ${couponCode} thành công.`
+        : 'Tinh tong thanh toan thành công.',
       summary,
       couponValid: !couponCode || Boolean(quote.discountAmount),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the tinh tong thanh toan luc nay.',
+      message: 'Không thể tính tổng thanh toán lúc này.',
       error: error.message,
     });
   }
@@ -941,23 +941,23 @@ exports.createCheckoutSession = async (req, res) => {
   const childrenCount = parsePositiveInteger(req.body.children_count ?? req.body.childrenCount ?? 0);
 
   if (!userId) {
-    return res.status(401).json({ message: 'Ban can dang nhap truoc khi thanh toan.' });
+    return res.status(401).json({ message: 'Bạn cần đăng nhập trước khi thanh toán.' });
   }
 
   if (!Number.isInteger(tourId) || tourId <= 0 || !travelDate || !requestId) {
-    return res.status(400).json({ message: 'Thieu thong tin de tao phien thanh toan.' });
+    return res.status(400).json({ message: 'Thiếu thông tin để tạo phiên thanh toán.' });
   }
 
   if (!contactName || !contactPhone || !contactEmail || !contactCountry) {
-    return res.status(400).json({ message: 'Vui long nhap day du thong tin lien he.' });
+    return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin liên hệ.' });
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
-    return res.status(400).json({ message: 'Email lien he khong dung dinh dang.' });
+    return res.status(400).json({ message: 'Email liên hệ không đúng định dạng.' });
   }
 
   if (!PAYMENT_METHODS[paymentMethod]) {
-    return res.status(400).json({ message: 'Phuong thuc thanh toan khong hop le.' });
+    return res.status(400).json({ message: 'Phương thức thanh toán không hợp lệ.' });
   }
 
   if (adultsCount === null || childrenCount === null || adultsCount + childrenCount <= 0) {
@@ -992,7 +992,7 @@ exports.createCheckoutSession = async (req, res) => {
       );
 
       if (!existingSummary) {
-        return res.status(409).json({ message: 'Phien thanh toan da ton tai nhung khong the khoi phuc.' });
+        return res.status(409).json({ message: 'Phiên thanh toán đã tồn tại nhưng không thể khôi phục.' });
       }
 
       if (isResumableTransactionStatus(existingSummary.transaction.status)) {
@@ -1000,7 +1000,7 @@ exports.createCheckoutSession = async (req, res) => {
           buildCheckoutSessionResponse(
             req,
             existingSummary,
-            'Phien thanh toan da duoc tao truoc do. Dang mo lai de ban tiep tuc.',
+            'Phiên thanh toán đã được tạo trước đó. Đang mở lại để bạn tiếp tục.',
           ),
         );
       }
@@ -1013,7 +1013,7 @@ exports.createCheckoutSession = async (req, res) => {
       const explicitRetrySummary = await getRetryTransactionSummary(retryTransactionCodeInput, userId);
 
       if (!explicitRetrySummary) {
-        return res.status(404).json({ message: 'Khong tim thay giao dich can retry.' });
+        return res.status(404).json({ message: 'Không tìm thấy giao dịch cần retry.' });
       }
 
       if (isResumableTransactionStatus(explicitRetrySummary.transaction.status)) {
@@ -1022,8 +1022,8 @@ exports.createCheckoutSession = async (req, res) => {
             req,
             explicitRetrySummary,
             normalizeTransactionStatus(explicitRetrySummary.transaction.status) === 'SUCCESS'
-              ? 'Giao dich nay da thanh toan thanh cong truoc do.'
-              : 'Phat hien mot phien thanh toan dang cho xu ly. Dang mo lai de ban tiep tuc.',
+              ? 'Giao dịch này đã thanh toán thành công trước đó.'
+              : 'Phát hiện một phiên thanh toán đang chờ xử lý. Đang mở lại để bạn tiếp tục.',
           ),
         );
       }
@@ -1032,13 +1032,13 @@ exports.createCheckoutSession = async (req, res) => {
     }
 
     if (retrySummary && !isTerminalTransactionStatus(retrySummary.transaction.status)) {
-      return res.status(409).json({ message: 'Giao dich hien tai khong nam trong trang thai co the retry.' });
+      return res.status(409).json({ message: 'Giao dịch hiện tại không nằm trong trạng thái có thể retry.' });
     }
 
     const tour = await getTourById(tourId);
 
     if (!tour) {
-      return res.status(404).json({ message: 'Khong tim thay tour.' });
+      return res.status(404).json({ message: 'Không tìm thấy tour.' });
     }
 
     if (tour.status !== 'Active') {
@@ -1073,8 +1073,8 @@ exports.createCheckoutSession = async (req, res) => {
             req,
             latestTransaction,
             latestTransaction.transaction.status === 'SUCCESS'
-              ? 'Booking nay da duoc thanh toan thanh cong roi.'
-              : 'Phat hien mot phien thanh toan moi hon cho booking nay. Dang mo lai de ban tiep tuc.',
+              ? 'Booking này đã được thanh toán thành công rồi.'
+              : 'Phát hiện một phiên thanh toán mới hơn cho booking này. Đang mở lại để bạn tiếp tục.',
           ),
         );
       }
@@ -1235,7 +1235,7 @@ exports.createCheckoutSession = async (req, res) => {
       await createBookingAuditLog(connection, bookingId, 'BOOKING_CREATED', {
         actorType: 'system',
         note: retrySummary
-          ? 'Checkout retry da tao mot phien thanh toan moi.'
+          ? 'Checkout retry đã tạo một phiên thanh toán mới.'
           : 'Checkout tao booking pending payment.',
         payload: {
           travelDate,
@@ -1256,8 +1256,8 @@ exports.createCheckoutSession = async (req, res) => {
           req,
           summary,
           retrySummary
-            ? 'Da tao phien thanh toan moi cho booking truoc do chua thanh cong.'
-            : 'Da tao booking pending va chuyen sang cong thanh toan.',
+            ? 'Đã tạo phiên thanh toán mới cho booking trước đó chưa thành công.'
+            : 'Đã tạo booking pending và chuyển sang cổng thanh toán.',
         ),
       );
     } catch (error) {
@@ -1268,7 +1268,7 @@ exports.createCheckoutSession = async (req, res) => {
     }
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the tao phien booking luc nay.',
+      message: 'Không thể tạo phiên booking lúc này.',
       error: error.message,
     });
   }
@@ -1282,7 +1282,7 @@ exports.renderMockGateway = async (req, res) => {
     const summary = await buildTransactionSummaryByCode(transactionCode, checkoutToken);
 
     if (!summary) {
-      return res.status(404).send('<h1>Khong tim thay phien thanh toan</h1>');
+      return res.status(404).send('<h1>Không tìm thấy phiên thanh toán</h1>');
     }
 
     const method = PAYMENT_METHODS[summary.transaction.provider] || PAYMENT_METHODS.VNPAY;
@@ -1304,7 +1304,7 @@ exports.renderMockGateway = async (req, res) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Thanh toan ${method.label}</title>
+  <title>Thanh toán ${method.label}</title>
   <style>
     :root {
       color-scheme: light;
@@ -1468,47 +1468,47 @@ exports.renderMockGateway = async (req, res) => {
   <div class="gateway-shell">
     <section class="card">
       <span class="brand">${method.label}</span>
-      <h1>Mo phong cong thanh toan cao cap</h1>
+      <h1>Mô phỏng cổng thanh toán cao cấp</h1>
       <p>${method.note}</p>
-      <p>Luot redirect nay mo phong hanh vi cua cong thanh toan that. Sau khi xac nhan, backend se verify callback signature, cap nhat giao dich va chuyen booking sang trang thai cho nhan vien xac nhan.</p>
+      <p>Lượt redirect này mô phỏng hành vi của cổng thanh toán thật. Sau khi xác nhận, backend sẽ verify callback signature, cập nhật giao dịch và chuyển booking sang trạng thái chờ nhân viên xác nhận.</p>
       <strong class="amount">${formatCurrency(summary.pricing.payableNowAmount || summary.pricing.totalAmount)}d</strong>
       <div class="stats">
         <div class="stat"><span>Booking code</span><strong>${summary.booking.code}</strong></div>
         <div class="stat"><span>Tour</span><strong>${summary.tour.title}</strong></div>
-        <div class="stat"><span>Ngay khoi hanh</span><strong>${summary.booking.travelDate}</strong></div>
-        <div class="stat"><span>Hanh khach</span><strong>${summary.booking.details.adultsCount} nguoi lon, ${summary.booking.details.childrenCount} tre em</strong></div>
-        <div class="stat"><span>Hinh thuc</span><strong>${summary.pricing.paymentPlan === PAYMENT_PLANS.DEPOSIT ? 'Dat coc truoc' : 'Thanh toan toan bo'}</strong></div>
+        <div class="stat"><span>Ngày khởi hành</span><strong>${summary.booking.travelDate}</strong></div>
+        <div class="stat"><span>Hành khách</span><strong>${summary.booking.details.adultsCount} người lớn, ${summary.booking.details.childrenCount} trẻ em</strong></div>
+        <div class="stat"><span>Hình thức</span><strong>${summary.pricing.paymentPlan === PAYMENT_PLANS.DEPOSIT ? 'Đặt cọc trước' : 'Thanh toán toàn bộ'}</strong></div>
       </div>
 
       <div class="actions">
-        <a class="action-link btn-success" href="${successCallbackUrl}">Thanh toan thanh cong</a>
-        <a class="action-link btn-fail" href="${failedCallbackUrl}">Mo phong that bai</a>
+        <a class="action-link btn-success" href="${successCallbackUrl}">Thanh toán thành công</a>
+        <a class="action-link btn-fail" href="${failedCallbackUrl}">Mô phỏng thất bại</a>
       </div>
-      <p class="note">Trong luc tich hop production, khu vuc nay se duoc thay bang redirect sang VNPay, MoMo, ZaloPay, chuyen khoan hoac cong the quoc te co credentials that.</p>
-      <p class="note">Neu trinh duyet chan submit form, ban van co the dung callback thu cong: <a href="${successCallbackUrl}">Success URL</a> hoac <a href="${failedCallbackUrl}">Failed URL</a>.</p>
+      <p class="note">Trong lúc tích hợp production, khu vực này sẽ được thay bằng redirect sang VNPay, MoMo, ZaloPay, chuyển khoản hoặc cổng thẻ quốc tế có credentials thật.</p>
+      <p class="note">Nếu trình duyệt chặn submit form, bạn vẫn có thể dùng callback thủ công: <a href="${successCallbackUrl}">Success URL</a> hoặc <a href="${failedCallbackUrl}">Failed URL</a>.</p>
     </section>
     <aside class="card">
-      <h2 style="margin-top:0;">Tong quan giao dich</h2>
+      <h2 style="margin-top:0;">Tổng quan giao dịch</h2>
       <div class="summary-list">
-        <div class="summary-item"><span>Tien nguoi lon</span><strong>${formatCurrency(summary.pricing.baseAmount)}d</strong></div>
-        <div class="summary-item"><span>Giam gia</span><strong>-${formatCurrency(summary.pricing.discountAmount)}d</strong></div>
-        <div class="summary-item"><span>Thue & phi</span><strong>${formatCurrency(summary.pricing.taxAmount + summary.pricing.feeAmount)}d</strong></div>
-        <div class="summary-item"><span>Thanh toan hom nay</span><strong>${formatCurrency(summary.pricing.payableNowAmount || summary.pricing.totalAmount)}d</strong></div>
-        <div class="summary-item"><span>Con lai</span><strong>${formatCurrency(summary.pricing.remainingAmount || 0)}d</strong></div>
+        <div class="summary-item"><span>Tien người lớn</span><strong>${formatCurrency(summary.pricing.baseAmount)}d</strong></div>
+        <div class="summary-item"><span>Giảm giá</span><strong>-${formatCurrency(summary.pricing.discountAmount)}d</strong></div>
+        <div class="summary-item"><span>Thuế & phí</span><strong>${formatCurrency(summary.pricing.taxAmount + summary.pricing.feeAmount)}d</strong></div>
+        <div class="summary-item"><span>Thanh toán hom nay</span><strong>${formatCurrency(summary.pricing.payableNowAmount || summary.pricing.totalAmount)}d</strong></div>
+        <div class="summary-item"><span>Còn lại</span><strong>${formatCurrency(summary.pricing.remainingAmount || 0)}d</strong></div>
       </div>
-      <div class="summary-total"><span>Tong gia tri booking</span><strong>${formatCurrency(summary.pricing.totalAmount)}d</strong></div>
+      <div class="summary-total"><span>Tổng giá trị booking</span><strong>${formatCurrency(summary.pricing.totalAmount)}d</strong></div>
       <div class="summary-list">
-        <div class="summary-item"><span>Khach lien he</span><strong>${summary.booking.details.contactName}</strong></div>
+        <div class="summary-item"><span>Khách liên hệ</span><strong>${summary.booking.details.contactName}</strong></div>
         <div class="summary-item"><span>Email</span><strong>${summary.booking.details.contactEmail}</strong></div>
-        <div class="summary-item"><span>So dien thoai</span><strong>${summary.booking.details.contactPhone}</strong></div>
-        <div class="summary-item"><span>Quoc gia</span><strong>${summary.booking.details.contactCountry}</strong></div>
+        <div class="summary-item"><span>Số điện thoại</span><strong>${summary.booking.details.contactPhone}</strong></div>
+        <div class="summary-item"><span>Quốc gia</span><strong>${summary.booking.details.contactCountry}</strong></div>
       </div>
     </aside>
   </div>
 </body>
 </html>`);
   } catch (error) {
-    return res.status(500).send(`<h1>Khong the mo cong thanh toan</h1><pre>${error.message}</pre>`);
+    return res.status(500).send(`<h1>Không thể mở cổng thanh toán</h1><pre>${error.message}</pre>`);
   }
 };
 
@@ -1532,14 +1532,14 @@ exports.handleGatewayCallback = async (req, res) => {
   const expectedSignature = signGatewayPayload(transactionCode, status, checkoutToken);
 
   if (signature !== expectedSignature) {
-    return res.status(400).json({ message: 'Chu ky callback khong hop le.' });
+    return res.status(400).json({ message: 'Chữ ký callback không hợp lệ.' });
   }
 
   try {
     const summary = await buildTransactionSummaryByCode(transactionCode, checkoutToken);
 
     if (!summary) {
-      return res.status(404).json({ message: 'Khong tim thay giao dich.' });
+      return res.status(404).json({ message: 'Không tìm thấy giao dịch.' });
     }
 
     if (normalizeTransactionStatus(summary.transaction.status) !== 'PENDING') {
@@ -1613,8 +1613,8 @@ exports.handleGatewayCallback = async (req, res) => {
           actorType: 'gateway',
           actorName: summary.transaction.provider,
           note: paymentState.remainingAmount > 0
-            ? 'Da nhan tien dat coc, booking cho nhan vien xac nhan.'
-            : 'Da nhan thanh toan day du, booking cho nhan vien xac nhan.',
+            ? 'Đã nhận tiền đặt cọc, booking chờ nhân viên xác nhận.'
+            : 'Đã nhận thanh toán đầy đủ, booking chờ nhân viên xác nhận.',
           payload: {
             transactionCode,
             paymentPlan: paymentState.paymentPlan,
@@ -1661,7 +1661,7 @@ exports.handleGatewayCallback = async (req, res) => {
         await createBookingAuditLog(connection, summary.booking.id, 'PAYMENT_FAILED', {
           actorType: 'gateway',
           actorName: summary.transaction.provider,
-          note: 'Gateway callback tra ve trang thai thanh toan that bai.',
+          note: 'Gateway callback trả về trạng thái thanh toán thất bại.',
           payload: {
             transactionCode,
             gatewayStatus,
@@ -1696,7 +1696,7 @@ exports.handleGatewayCallback = async (req, res) => {
     return res.redirect(buildFrontendResultUrl(freshSummary, gatewayStatus === 'SUCCESS' ? 'success' : 'failed'));
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the xu ly callback thanh toan luc nay.',
+      message: 'Không thể xử lý callback thanh toán lúc này.',
       error: error.message,
     });
   }
@@ -1708,7 +1708,7 @@ exports.getCheckoutTransaction = async (req, res) => {
   const isAdminViewer = normalizeText(req.user?.role).toUpperCase() === 'ADMIN';
 
   if (!transactionCode) {
-    return res.status(400).json({ message: 'Thieu thong tin giao dich.' });
+    return res.status(400).json({ message: 'Thiếu thông tin giao dịch.' });
   }
 
   try {
@@ -1717,16 +1717,16 @@ exports.getCheckoutTransaction = async (req, res) => {
     });
 
     if (!summary) {
-      return res.status(404).json({ message: 'Khong tim thay giao dich.' });
+      return res.status(404).json({ message: 'Không tìm thấy giao dịch.' });
     }
 
     return res.status(200).json({
-      message: 'Lay tong quan checkout thanh cong.',
+      message: 'Lấy tổng quan checkout thành công.',
       summary,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay tong quan checkout luc nay.',
+      message: 'Không thể lấy tổng quan checkout lúc này.',
       error: error.message,
     });
   }

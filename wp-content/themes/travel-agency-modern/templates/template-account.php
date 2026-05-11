@@ -118,8 +118,11 @@ while ( have_posts() ) :
 												<?php
 												$detail_url   = add_query_arg( 'booking_id', absint( $booking['id'] ), $account_url ) . '#booking-detail';
 												$tour_post_id = function_exists( 'tam_backend_api_get_post_id_by_api_tour_id' ) ? tam_backend_api_get_post_id_by_api_tour_id( isset( $booking['tour_id'] ) ? $booking['tour_id'] : 0 ) : 0;
-												$review_link  = $tour_post_id ? trailingslashit( get_permalink( $tour_post_id ) ) . '#tour-review-form' : '';
-												$payment      = isset( $booking['payment'] ) && is_array( $booking['payment'] ) ? $booking['payment'] : null;
+												$review_link       = $tour_post_id ? trailingslashit( get_permalink( $tour_post_id ) ) . '#tour-review-form' : '';
+												$payment           = isset( $booking['payment'] ) && is_array( $booking['payment'] ) ? $booking['payment'] : null;
+												$booking_status    = strtoupper( isset( $booking['status'] ) ? (string) $booking['status'] : '' );
+												$payment_status    = $payment && ! empty( $payment['status'] ) ? strtoupper( (string) $payment['status'] ) : strtoupper( isset( $booking['payment_status'] ) ? (string) $booking['payment_status'] : '' );
+												$can_complete_trip = ! empty( $booking['can_complete_trip'] ) || ! empty( $booking['can_complete'] ) || ( in_array( $booking_status, array( 'PAID', 'PENDING_CONFIRMATION', 'CONFIRMED' ), true ) && in_array( $payment_status, array( 'PAID', 'PARTIALLY_PAID', 'SUCCESS' ), true ) );
 												?>
 												<article class="tam-account-booking-card">
 													<div class="tam-account-booking-card__head">
@@ -142,9 +145,15 @@ while ( have_posts() ) :
 													</ul>
 
 													<div class="tam-account-booking-card__actions">
-														<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $detail_url ); ?>">
-															<?php esc_html_e( 'Xem chi tiết', 'travel-agency-modern' ); ?>
-														</a>
+														<?php if ( $can_complete_trip ) : ?>
+															<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+																<?php wp_nonce_field( 'tam_account_complete_booking', 'tam_account_nonce' ); ?>
+																<input type="hidden" name="action" value="tam_complete_booking" />
+																<input type="hidden" name="booking_id" value="<?php echo esc_attr( $booking['id'] ); ?>" />
+																<input type="hidden" name="redirect_to" value="<?php echo esc_url( $detail_url ); ?>" />
+																<button type="submit" class="tam-button tam-button--ghost"><?php esc_html_e( 'Hoàn thành chuyến đi', 'travel-agency-modern' ); ?></button>
+															</form>
+														<?php endif; ?>
 
 														<?php if ( ! empty( $booking['can_review'] ) && $review_link ) : ?>
 															<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $review_link ); ?>">

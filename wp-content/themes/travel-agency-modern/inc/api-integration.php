@@ -208,10 +208,10 @@ function tam_backend_api_is_missing_route_response( $response ) {
 function tam_backend_api_get_error_message( $response, $default_message, $path = '' ) {
 	if ( tam_backend_api_is_missing_route_response( $response ) ) {
 		if ( 0 === strpos( (string) $path, 'checkout/' ) ) {
-			return __( 'Backend checkout tam thoi chua san sang. Vui long khoi dong lai backend-api va tai lai trang.', 'travel-agency-modern' );
+			return __( 'Backend checkout tạm thời chưa sẵn sàng. Vui lòng khởi động lại backend-api và tải lại trang.', 'travel-agency-modern' );
 		}
 
-		return __( 'Backend API tam thoi chua san sang. Vui long thu lai sau it phut.', 'travel-agency-modern' );
+		return __( 'Backend API tạm thời chưa sẵn sàng. Vui lòng thử lại sau ít phút.', 'travel-agency-modern' );
 	}
 
 	return ! empty( $response['message'] ) ? (string) $response['message'] : $default_message;
@@ -542,6 +542,10 @@ function tam_backend_api_get_account_notice_markup() {
 				'class'   => 'tam-form-notice tam-form-notice--success',
 				'message' => __( 'Booking đã được huỷ thành công trên backend.', 'travel-agency-modern' ),
 			),
+			'complete_success' => array(
+				'class'   => 'tam-form-notice tam-form-notice--success',
+				'message' => __( 'Chuyến đi đã được đánh dấu hoàn thành. Bạn có thể gửi đánh giá cho tour này.', 'travel-agency-modern' ),
+			),
 			'login_required' => array(
 				'class'   => 'tam-form-notice tam-form-notice--error',
 				'message' => __( 'Bạn cần đăng nhập để xem và quản lý booking.', 'travel-agency-modern' ),
@@ -553,6 +557,10 @@ function tam_backend_api_get_account_notice_markup() {
 			'cancel_failed'  => array(
 				'class'   => 'tam-form-notice tam-form-notice--error',
 				'message' => __( 'Không thể huỷ booking lúc này. Hãy kiểm tra lại trạng thái đơn.', 'travel-agency-modern' ),
+			),
+			'complete_failed' => array(
+				'class'   => 'tam-form-notice tam-form-notice--error',
+				'message' => __( 'Không thể hoàn thành chuyến đi lúc này. Hãy kiểm tra lại trạng thái thanh toán.', 'travel-agency-modern' ),
 			),
 		)
 	);
@@ -668,7 +676,7 @@ function tam_backend_api_handle_ajax_login_request() {
 	if ( tam_backend_api_is_authenticated() ) {
 		wp_send_json_success(
 			array(
-				'message'     => __( 'Tai khoan backend da dang nhap san.', 'travel-agency-modern' ),
+				'message'     => __( 'Tài khoản backend đã đăng nhập sẵn.', 'travel-agency-modern' ),
 				'redirectUrl' => function_exists( 'tam_get_current_public_url' ) ? tam_get_current_public_url() : home_url( '/' ),
 			)
 		);
@@ -679,7 +687,7 @@ function tam_backend_api_handle_ajax_login_request() {
 	if ( ! wp_verify_nonce( $nonce, 'tam_auth_login' ) ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Phien dang nhap da het han. Vui long tai lai trang va thu lai.', 'travel-agency-modern' ),
+				'message' => __( 'Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang và thử lại.', 'travel-agency-modern' ),
 			),
 			403
 		);
@@ -691,19 +699,19 @@ function tam_backend_api_handle_ajax_login_request() {
 	$errors      = array();
 
 	if ( '' === trim( $email ) ) {
-		$errors['login_email'] = __( 'Vui long nhap email.', 'travel-agency-modern' );
+		$errors['login_email'] = __( 'Vui lòng nhập email.', 'travel-agency-modern' );
 	} elseif ( ! is_email( $email ) ) {
-		$errors['login_email'] = __( 'Email chua dung dinh dang.', 'travel-agency-modern' );
+		$errors['login_email'] = __( 'Email chưa đúng định dạng.', 'travel-agency-modern' );
 	}
 
 	if ( '' === $password ) {
-		$errors['login_password'] = __( 'Vui long nhap mat khau.', 'travel-agency-modern' );
+		$errors['login_password'] = __( 'Vui lòng nhập mật khẩu.', 'travel-agency-modern' );
 	}
 
 	if ( ! empty( $errors ) ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Vui long kiem tra lai thong tin dang nhap.', 'travel-agency-modern' ),
+				'message' => __( 'Vui lòng kiểm tra lại thông tin đăng nhập.', 'travel-agency-modern' ),
 				'errors'  => $errors,
 			),
 			422
@@ -715,7 +723,7 @@ function tam_backend_api_handle_ajax_login_request() {
 	if ( ! $response['success'] ) {
 		wp_send_json_error(
 			array(
-				'message' => ! empty( $response['message'] ) ? $response['message'] : __( 'Dang nhap backend that bai.', 'travel-agency-modern' ),
+				'message' => ! empty( $response['message'] ) ? $response['message'] : __( 'Đăng nhập backend thất bại.', 'travel-agency-modern' ),
 			),
 			$response['status'] ? $response['status'] : 401
 		);
@@ -723,7 +731,7 @@ function tam_backend_api_handle_ajax_login_request() {
 
 	wp_send_json_success(
 		array(
-			'message'     => __( 'Dang nhap backend thanh cong. Dang tai lai trang...', 'travel-agency-modern' ),
+			'message'     => __( 'Đăng nhập backend thành công. Đang tải lại trang...', 'travel-agency-modern' ),
 			'redirectUrl' => $redirect_to ? $redirect_to : ( function_exists( 'tam_get_current_public_url' ) ? tam_get_current_public_url() : home_url( '/' ) ),
 		)
 	);
@@ -738,7 +746,7 @@ function tam_backend_api_handle_ajax_register_request() {
 	if ( tam_backend_api_is_authenticated() ) {
 		wp_send_json_success(
 			array(
-				'message'     => __( 'Tai khoan backend cua ban da san sang.', 'travel-agency-modern' ),
+				'message'     => __( 'Tài khoản backend của bạn đã sẵn sàng.', 'travel-agency-modern' ),
 				'redirectUrl' => function_exists( 'tam_get_current_public_url' ) ? tam_get_current_public_url() : home_url( '/' ),
 			)
 		);
@@ -749,7 +757,7 @@ function tam_backend_api_handle_ajax_register_request() {
 	if ( ! wp_verify_nonce( $nonce, 'tam_auth_register' ) ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Phien dang ky da het han. Vui long tai lai trang va thu lai.', 'travel-agency-modern' ),
+				'message' => __( 'Phiên đăng ký đã hết hạn. Vui lòng tải lại trang và thử lại.', 'travel-agency-modern' ),
 			),
 			403
 		);
@@ -764,37 +772,37 @@ function tam_backend_api_handle_ajax_register_request() {
 	$errors           = array();
 
 	if ( '' === trim( $name ) ) {
-		$errors['register_name'] = __( 'Vui long nhap ho ten.', 'travel-agency-modern' );
+		$errors['register_name'] = __( 'Vui lòng nhập họ tên.', 'travel-agency-modern' );
 	}
 
 	if ( '' === trim( $phone ) ) {
-		$errors['register_phone'] = __( 'Vui long nhap so dien thoai.', 'travel-agency-modern' );
+		$errors['register_phone'] = __( 'Vui lòng nhập số điện thoại.', 'travel-agency-modern' );
 	} elseif ( ! preg_match( '/^[0-9]{9,11}$/', $phone ) ) {
-		$errors['register_phone'] = __( 'So dien thoai phai gom 9 den 11 chu so.', 'travel-agency-modern' );
+		$errors['register_phone'] = __( 'Số điện thoại phải gồm 9 đến 11 chữ số.', 'travel-agency-modern' );
 	}
 
 	if ( '' === trim( $email ) ) {
-		$errors['register_email'] = __( 'Vui long nhap email.', 'travel-agency-modern' );
+		$errors['register_email'] = __( 'Vui lòng nhập email.', 'travel-agency-modern' );
 	} elseif ( ! is_email( $email ) ) {
-		$errors['register_email'] = __( 'Email chua dung dinh dang.', 'travel-agency-modern' );
+		$errors['register_email'] = __( 'Email chưa đúng định dạng.', 'travel-agency-modern' );
 	}
 
 	if ( '' === $password ) {
-		$errors['register_password'] = __( 'Vui long nhap mat khau.', 'travel-agency-modern' );
+		$errors['register_password'] = __( 'Vui lòng nhập mật khẩu.', 'travel-agency-modern' );
 	} elseif ( strlen( $password ) < 6 ) {
-		$errors['register_password'] = __( 'Mat khau can toi thieu 6 ky tu.', 'travel-agency-modern' );
+		$errors['register_password'] = __( 'Mật khẩu cần tối thiểu 6 ký tự.', 'travel-agency-modern' );
 	}
 
 	if ( '' === $confirm_password ) {
-		$errors['register_confirm_password'] = __( 'Vui long xac nhan mat khau.', 'travel-agency-modern' );
+		$errors['register_confirm_password'] = __( 'Vui lòng xác nhận mật khẩu.', 'travel-agency-modern' );
 	} elseif ( $password !== $confirm_password ) {
-		$errors['register_confirm_password'] = __( 'Mat khau xac nhan chua khop.', 'travel-agency-modern' );
+		$errors['register_confirm_password'] = __( 'Mật khẩu xác nhận chưa khớp.', 'travel-agency-modern' );
 	}
 
 	if ( ! empty( $errors ) ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Vui long kiem tra lai thong tin dang ky.', 'travel-agency-modern' ),
+				'message' => __( 'Vui lòng kiểm tra lại thông tin đăng ký.', 'travel-agency-modern' ),
 				'errors'  => $errors,
 			),
 			422
@@ -818,7 +826,7 @@ function tam_backend_api_handle_ajax_register_request() {
 	if ( ! $response['success'] ) {
 		wp_send_json_error(
 			array(
-				'message' => ! empty( $response['message'] ) ? $response['message'] : __( 'Dang ky backend that bai.', 'travel-agency-modern' ),
+				'message' => ! empty( $response['message'] ) ? $response['message'] : __( 'Đăng ký backend thất bại.', 'travel-agency-modern' ),
 				'errors'  => tam_backend_api_map_register_errors( $response['errors'] ),
 			),
 			$response['status'] ? $response['status'] : 400
@@ -832,7 +840,7 @@ function tam_backend_api_handle_ajax_register_request() {
 	if ( ! $token || empty( $user ) ) {
 		wp_send_json_success(
 			array(
-				'message'      => __( 'Dang ky thanh cong. Ban co the dang nhap ngay bay gio.', 'travel-agency-modern' ),
+				'message'      => __( 'Đăng ký thành công. Bạn có thể đăng nhập ngay bây giờ.', 'travel-agency-modern' ),
 				'switchTab'    => 'login',
 				'prefillEmail' => $email,
 			)
@@ -843,7 +851,7 @@ function tam_backend_api_handle_ajax_register_request() {
 
 	wp_send_json_success(
 		array(
-			'message'     => __( 'Tao tai khoan backend thanh cong. Dang dang nhap...', 'travel-agency-modern' ),
+			'message'     => __( 'Tạo tài khoản backend thành công. Đang đăng nhập...', 'travel-agency-modern' ),
 			'redirectUrl' => $redirect_to ? $redirect_to : ( function_exists( 'tam_get_current_public_url' ) ? tam_get_current_public_url() : home_url( '/' ) ),
 		)
 	);
@@ -1041,11 +1049,11 @@ function tam_backend_api_handle_checkout_submission() {
 			array_filter(
 				array(
 					'API booking ref: ' . tam_backend_api_build_booking_ref( $booking_id ),
-					'Khach dat tour: ' . $name,
+					'Khách đặt tour: ' . $name,
 					'Email: ' . $email,
-					'So dien thoai: ' . $phone,
+					'Số điện thoại: ' . $phone,
 					'Tour: ' . $tour_title,
-					'Ngay khoi hanh: ' . $departure_date,
+					'Ngày khởi hành: ' . $departure_date,
 					'So nguoi: ' . $people,
 					'Backend payment: ' . tam_backend_api_map_payment_method( $payment_method ),
 					$note ? 'Ghi chu: ' . $note : '',
@@ -1243,7 +1251,7 @@ function tam_backend_api_get_tour_results_summary( $found_posts ) {
 	$found_posts = max( 0, absint( $found_posts ) );
 
 	if ( $found_posts < 1 ) {
-		return __( 'Khong tim thay tour phu hop', 'travel-agency-modern' );
+		return __( 'Không tìm thấy tour phù hợp', 'travel-agency-modern' );
 	}
 
 	return sprintf(
@@ -1281,7 +1289,7 @@ function tam_backend_api_get_pagination_markup( $current_page, $total_pages, $ba
 			'current'   => $current_page,
 			'total'     => $total_pages,
 			'type'      => 'list',
-			'prev_text' => __( 'Truoc', 'travel-agency-modern' ),
+			'prev_text' => __( 'Trước', 'travel-agency-modern' ),
 			'next_text' => __( 'Sau', 'travel-agency-modern' ),
 			'add_args'  => $add_args,
 		)
@@ -1291,7 +1299,7 @@ function tam_backend_api_get_pagination_markup( $current_page, $total_pages, $ba
 		return '';
 	}
 
-	return '<nav class="tam-pagination" aria-label="' . esc_attr__( 'Phan trang', 'travel-agency-modern' ) . '">' . wp_kses_post( $links ) . '</nav>';
+	return '<nav class="tam-pagination" aria-label="' . esc_attr__( 'Phân trang', 'travel-agency-modern' ) . '">' . wp_kses_post( $links ) . '</nav>';
 }
 
 /**
@@ -1317,7 +1325,7 @@ function tam_backend_api_get_tour_card_context( $tour ) {
 		'title'         => isset( $tour['title'] ) ? sanitize_text_field( (string) $tour['title'] ) : '',
 		'excerpt'       => wp_trim_words( wp_strip_all_tags( (string) ( isset( $tour['description'] ) ? $tour['description'] : '' ) ), 24 ),
 		'visual_url'    => isset( $tour['imageUrl'] ) ? tam_backend_api_resolve_asset_url( (string) $tour['imageUrl'] ) : '',
-		'primary_term'  => ! empty( $tour['location'] ) ? sanitize_text_field( (string) $tour['location'] ) : __( 'Tour du lich', 'travel-agency-modern' ),
+		'primary_term'  => ! empty( $tour['location'] ) ? sanitize_text_field( (string) $tour['location'] ) : __( 'Tour du lịch', 'travel-agency-modern' ),
 		'duration'      => ! empty( $tour['durationText'] ) ? sanitize_text_field( (string) $tour['durationText'] ) : '',
 		'departure'     => ! empty( $tour['meetingPoint'] ) ? sanitize_text_field( (string) $tour['meetingPoint'] ) : '',
 		'price_display' => function_exists( 'tam_format_tour_price' ) ? tam_format_tour_price( isset( $tour['price'] ) ? (string) absint( $tour['price'] ) : '' ) : '',
@@ -1378,10 +1386,10 @@ function tam_backend_api_get_tour_card_markup( $tour ) {
 			<p class="tam-card__excerpt"><?php echo esc_html( $context['excerpt'] ); ?></p>
 			<div class="tam-card__footer">
 				<div class="tam-price">
-					<span><?php esc_html_e( 'Gia tham khao', 'travel-agency-modern' ); ?></span>
+					<span><?php esc_html_e( 'Giá tham khảo', 'travel-agency-modern' ); ?></span>
 					<strong><?php echo esc_html( $context['price_display'] ); ?></strong>
 				</div>
-				<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $link ); ?>"><?php esc_html_e( 'Xem chi tiet', 'travel-agency-modern' ); ?></a>
+				<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $link ); ?>"><?php esc_html_e( 'Xem chi tiết', 'travel-agency-modern' ); ?></a>
 			</div>
 		</div>
 	</article>
@@ -1420,9 +1428,9 @@ function tam_backend_api_get_tour_results_markup( $tours, $args = array() ) {
 		?>
 		<div class="tam-section-head tam-section-head--results">
 			<div>
-				<div class="tam-eyebrow"><?php esc_html_e( 'Ket qua hien co', 'travel-agency-modern' ); ?></div>
+				<div class="tam-eyebrow"><?php esc_html_e( 'Kết quả hiện có', 'travel-agency-modern' ); ?></div>
 				<h2 class="tam-section-title"><?php echo esc_html( $summary ); ?></h2>
-				<p class="tam-section-subtitle"><?php esc_html_e( 'Danh sach tour dang duoc tai tu backend API va phan trang theo tung nhom 10 tour de de theo doi hon.', 'travel-agency-modern' ); ?></p>
+				<p class="tam-section-subtitle"><?php esc_html_e( 'Danh sách tour đang được tải từ backend API và phân trang theo từng nhóm 9 tour để dễ theo dõi hơn.', 'travel-agency-modern' ); ?></p>
 			</div>
 		</div>
 		<div class="tam-tour-grid">
@@ -1445,8 +1453,8 @@ function tam_backend_api_get_tour_results_markup( $tours, $args = array() ) {
 	else :
 		?>
 		<div class="tam-empty-state">
-			<strong><?php esc_html_e( 'Khong tim thay tour phu hop', 'travel-agency-modern' ); ?></strong>
-			<p><?php esc_html_e( 'Hay thu doi tu khoa hoac bo loc diem den de xem them hanh trinh khac.', 'travel-agency-modern' ); ?></p>
+			<strong><?php esc_html_e( 'Không tìm thấy tour phù hợp', 'travel-agency-modern' ); ?></strong>
+			<p><?php esc_html_e( 'Hãy thử đổi từ khóa hoặc bộ lọc điểm đến để xem thêm hành trình khác.', 'travel-agency-modern' ); ?></p>
 		</div>
 		<?php
 	endif;
@@ -1470,7 +1478,7 @@ function tam_backend_api_get_tour_archive_payload( $search_term = '', $selected_
 	$base_url         = $base_url ? $base_url : tam_get_page_url_by_path( 'tour' );
 	$destination_name = tam_backend_api_get_destination_name_from_slug( $selected_dest );
 	$query_args       = array(
-		'limit' => 10,
+		'limit' => 9,
 		'page'  => $paged,
 		'status' => 'Active',
 	);
@@ -1495,7 +1503,7 @@ function tam_backend_api_get_tour_archive_payload( $search_term = '', $selected_
 	if ( ! $response['success'] ) {
 		return array(
 			'success'      => false,
-			'message'      => ! empty( $response['message'] ) ? $response['message'] : __( 'Khong the tai du lieu tour tu backend.', 'travel-agency-modern' ),
+			'message'      => ! empty( $response['message'] ) ? $response['message'] : __( 'Không thể tải dữ liệu tour từ backend.', 'travel-agency-modern' ),
 			'html'         => '',
 			'found_posts'  => 0,
 			'current_page' => $paged,
@@ -1543,25 +1551,25 @@ function tam_backend_api_get_booking_status_label( $status ) {
 		'CONFIRMED' => __( 'Đã xác nhận', 'travel-agency-modern' ),
 		'COMPLETED' => __( 'Đã hoàn thành', 'travel-agency-modern' ),
 		'CANCELLED' => __( 'Đã huỷ', 'travel-agency-modern' ),
-		'PAYMENT_FAILED' => __( 'Thanh toan that bai', 'travel-agency-modern' ),
+		'PAYMENT_FAILED' => __( 'Thanh toán thất bại', 'travel-agency-modern' ),
 	);
 
 	$status = strtoupper( trim( (string) $status ) );
 
 	if ( 'PENDING_PAYMENT' === $status ) {
-		return __( 'Cho thanh toan', 'travel-agency-modern' );
+		return __( 'Chờ thanh toán', 'travel-agency-modern' );
 	}
 
 	if ( 'PENDING_CONFIRMATION' === $status ) {
-		return __( 'Cho xac nhan', 'travel-agency-modern' );
+		return __( 'Chờ xác nhận', 'travel-agency-modern' );
 	}
 
 	if ( 'PAID' === $status ) {
-		return __( 'Da thanh toan', 'travel-agency-modern' );
+		return __( 'Đã thanh toán', 'travel-agency-modern' );
 	}
 
 	if ( 'REFUNDED' === $status ) {
-		return __( 'Da hoan tien', 'travel-agency-modern' );
+		return __( 'Đã hoàn tiền', 'travel-agency-modern' );
 	}
 
 	return isset( $map[ $status ] ) ? $map[ $status ] : $status;
@@ -1580,7 +1588,7 @@ function tam_backend_api_get_payment_method_label( $method ) {
 		'MOMO'          => __( 'MoMo', 'travel-agency-modern' ),
 		'VNPAY'         => __( 'VNPay', 'travel-agency-modern' ),
 		'ZALOPAY'       => __( 'ZaloPay', 'travel-agency-modern' ),
-		'CARD'          => __( 'The quoc te', 'travel-agency-modern' ),
+		'CARD'          => __( 'Thẻ quốc tế', 'travel-agency-modern' ),
 	);
 
 	$method = strtoupper( trim( (string) $method ) );
@@ -1604,19 +1612,19 @@ function tam_backend_api_get_payment_status_label( $status ) {
 	$status = strtoupper( trim( (string) $status ) );
 
 	if ( 'PARTIALLY_PAID' === $status ) {
-		return __( 'Da dat coc', 'travel-agency-modern' );
+		return __( 'Đã đặt cọc', 'travel-agency-modern' );
 	}
 
 	if ( 'REFUNDED' === $status ) {
-		return __( 'Da hoan tien', 'travel-agency-modern' );
+		return __( 'Đã hoàn tiền', 'travel-agency-modern' );
 	}
 
 	if ( 'CANCELLED' === $status ) {
-		return __( 'Da huy', 'travel-agency-modern' );
+		return __( 'Đã hủy', 'travel-agency-modern' );
 	}
 
 	if ( 'EXPIRED' === $status ) {
-		return __( 'Het han', 'travel-agency-modern' );
+		return __( 'Hết hạn', 'travel-agency-modern' );
 	}
 
 	return isset( $map[ $status ] ) ? $map[ $status ] : $status;
@@ -1917,6 +1925,67 @@ add_action( 'admin_post_tam_cancel_booking', 'tam_backend_api_handle_cancel_book
 add_action( 'admin_post_nopriv_tam_cancel_booking', 'tam_backend_api_handle_cancel_booking' );
 
 /**
+ * Handle frontend trip completion requests.
+ *
+ * @return void
+ */
+function tam_backend_api_handle_complete_booking() {
+	$redirect_to = isset( $_POST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ) : tam_backend_api_get_account_url();
+
+	if ( ! isset( $_POST['tam_account_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['tam_account_nonce'] ) ), 'tam_account_complete_booking' ) ) {
+		tam_backend_api_redirect_public_status( 'account_status', 'invalid_nonce', $redirect_to, array(), array( 'account_message' ) );
+	}
+
+	$token      = tam_backend_api_get_auth_token();
+	$booking_id = isset( $_POST['booking_id'] ) ? absint( wp_unslash( $_POST['booking_id'] ) ) : 0;
+
+	if ( ! $token ) {
+		tam_backend_api_redirect_public_status( 'account_status', 'login_required', $redirect_to, array(), array( 'account_message' ) );
+	}
+
+	if ( $booking_id < 1 ) {
+		tam_backend_api_redirect_public_status(
+			'account_status',
+			'complete_failed',
+			$redirect_to,
+			array(
+				'account_message' => rawurlencode( __( 'Booking không hợp lệ.', 'travel-agency-modern' ) ),
+			),
+			array( 'account_message' )
+		);
+	}
+
+	$response = tam_backend_api_request(
+		'PUT',
+		'bookings/my/' . $booking_id . '/complete',
+		array(
+			'auth_token' => $token,
+		)
+	);
+
+	if ( ! $response['success'] ) {
+		if ( 401 === (int) $response['status'] ) {
+			tam_backend_api_clear_session();
+			tam_backend_api_redirect_public_status( 'account_status', 'login_required', $redirect_to, array(), array( 'account_message' ) );
+		}
+
+		tam_backend_api_redirect_public_status(
+			'account_status',
+			'complete_failed',
+			$redirect_to,
+			array(
+				'account_message' => rawurlencode( ! empty( $response['message'] ) ? $response['message'] : __( 'Backend chưa thể hoàn thành chuyến đi này.', 'travel-agency-modern' ) ),
+			),
+			array( 'account_message' )
+		);
+	}
+
+	tam_backend_api_redirect_public_status( 'account_status', 'complete_success', $redirect_to, array(), array( 'account_message' ) );
+}
+add_action( 'admin_post_tam_complete_booking', 'tam_backend_api_handle_complete_booking' );
+add_action( 'admin_post_nopriv_tam_complete_booking', 'tam_backend_api_handle_complete_booking' );
+
+/**
  * Handle public review submissions against the backend API.
  *
  * @return void
@@ -2189,7 +2258,7 @@ function tam_backend_api_maybe_send_checkout_payment_receipt_email( $summary ) {
 	$payment     = isset( $summary['payment'] ) && is_array( $summary['payment'] ) ? $summary['payment'] : array();
 	$total_label = tam_backend_api_get_summary_amount_display( $summary, 'pricing.totalAmount' );
 	$subject     = sprintf(
-		'[%1$s] Da nhan thanh toan cho booking %2$s',
+		'[%1$s] Đã nhận thanh toán cho booking %2$s',
 		$site_name,
 		isset( $booking['code'] ) ? (string) $booking['code'] : ''
 	);
@@ -2199,19 +2268,19 @@ function tam_backend_api_maybe_send_checkout_payment_receipt_email( $summary ) {
 			array(
 				'Xin chao ' . ( isset( $details['contactName'] ) ? (string) $details['contactName'] : '' ) . ',',
 				'',
-				'ADN Travel da nhan thanh toan cho booking cua ban.',
-				'Booking hien dang cho nhan vien xac nhan thu cong truoc khi gui ve chinh thuc.',
-				'Ma booking: ' . ( isset( $booking['code'] ) ? (string) $booking['code'] : '' ),
+				'ADN Travel đã nhận thanh toán cho booking của bạn.',
+				'Booking hiện đang chờ nhân viên xác nhận thủ công trước khi gửi vé chính thức.',
+				'Mã booking: ' . ( isset( $booking['code'] ) ? (string) $booking['code'] : '' ),
 				'Tour: ' . ( isset( $tour['title'] ) ? (string) $tour['title'] : '' ),
-				'Ngay khoi hanh: ' . ( isset( $booking['travelDate'] ) ? (string) $booking['travelDate'] : '' ),
-				'Hanh khach: ' . ( isset( $booking['travellers'] ) ? (int) $booking['travellers'] : 0 ),
-				'Phuong thuc thanh toan: ' . tam_backend_api_get_payment_method_label( isset( $payment['method'] ) ? $payment['method'] : '' ),
+				'Ngày khởi hành: ' . ( isset( $booking['travelDate'] ) ? (string) $booking['travelDate'] : '' ),
+				'Hành khách: ' . ( isset( $booking['travellers'] ) ? (int) $booking['travellers'] : 0 ),
+				'Phương thức thanh toan: ' . tam_backend_api_get_payment_method_label( isset( $payment['method'] ) ? $payment['method'] : '' ),
 				'So tien da nhan: ' . tam_backend_api_get_summary_amount_display( $summary, 'pricing.payableNowAmount' ),
-				'Tong gia tri booking: ' . $total_label,
-				'Con lai: ' . tam_backend_api_get_summary_amount_display( $summary, 'pricing.remainingAmount' ),
-				'Trang thai booking: Cho xac nhan',
+				'Tổng giá trị booking: ' . $total_label,
+				'Còn lại: ' . tam_backend_api_get_summary_amount_display( $summary, 'pricing.remainingAmount' ),
+				'Trạng thái booking: Chờ xác nhận',
 				'',
-				'Chung toi se lien he som nhat sau khi doi ngu van hanh kiem tra va xac nhan booking.',
+				'Chúng tôi sẽ liên hệ sớm nhất sau khi đội ngũ vận hành kiểm tra và xác nhận booking.',
 				'Ban co the vao trang tai khoan de xem lich su booking va trang thai thanh toan.',
 			)
 		)
@@ -2247,7 +2316,7 @@ function tam_backend_api_get_checkout_result_context() {
 			'result'          => 'failed',
 			'transactionCode' => $transaction_code,
 			'checkoutToken'   => '',
-			'message'         => __( 'Khong the tai lai ket qua giao dich nay. Vui long kiem tra lich su booking hoac thu lai sau.', 'travel-agency-modern' ),
+			'message'         => __( 'Không thể tải lại kết quả giao dịch này. Vui lòng kiểm tra lịch sử booking hoặc thử lại sau.', 'travel-agency-modern' ),
 			'summary'         => null,
 			'invoiceUrl'      => '',
 			'accountUrl'      => tam_backend_api_get_account_url(),
@@ -2269,10 +2338,10 @@ function tam_backend_api_get_checkout_result_context() {
 		'message'         => 'success' === $result
 			? (
 				$is_confirmed
-					? __( 'Thanh toan thanh cong va booking cua ban da duoc xac nhan chinh thuc.', 'travel-agency-modern' )
-					: __( 'Thanh toan thanh cong. Booking cua ban dang cho nhan vien xac nhan. Chung toi se lien he voi ban som nhat.', 'travel-agency-modern' )
+					? __( 'Thanh toán thành công và booking của bạn đã được xác nhận chính thức.', 'travel-agency-modern' )
+					: __( 'Thanh toán thành công. Booking của bạn đang chờ nhân viên xác nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất.', 'travel-agency-modern' )
 			)
-			: __( 'Giao dich chua thanh cong. Ban co the quay lai chon phuong thuc khac.', 'travel-agency-modern' ),
+			: __( 'Giao dich chua thành công. Ban co the quay lai chon phuong thuc khac.', 'travel-agency-modern' ),
 		'summary'         => $summary,
 		'invoiceUrl'      => $is_confirmed ? tam_backend_api_get_checkout_invoice_url( $transaction_code ) : '',
 		'accountUrl'      => tam_backend_api_get_account_url(),
@@ -2385,7 +2454,7 @@ function tam_backend_api_handle_checkout_invoice_download() {
 
 	if ( ! $summary ) {
 		wp_die(
-			esc_html__( 'Khong tim thay invoice booking.', 'travel-agency-modern' ),
+			esc_html__( 'Không tìm thấy invoice booking.', 'travel-agency-modern' ),
 			'',
 			array(
 				'response' => 404,
@@ -2397,7 +2466,7 @@ function tam_backend_api_handle_checkout_invoice_download() {
 
 	if ( ! in_array( $booking_status, array( 'CONFIRMED', 'COMPLETED' ), true ) ) {
 		wp_die(
-			esc_html__( 'Invoice chinh thuc chi kha dung sau khi booking duoc nhan vien xac nhan.', 'travel-agency-modern' ),
+			esc_html__( 'Invoice chính thức chỉ khả dụng sau khi booking được nhân viên xác nhận.', 'travel-agency-modern' ),
 			'',
 			array(
 				'response' => 403,
@@ -2430,7 +2499,7 @@ function tam_backend_api_handle_ajax_checkout_quote_request() {
 	if ( ! wp_verify_nonce( $nonce, 'tam_checkout_quote' ) ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Phien checkout da het han. Vui long tai lai trang.', 'travel-agency-modern' ),
+				'message' => __( 'Phiên checkout đã hết hạn. Vui lòng tải lại trang.', 'travel-agency-modern' ),
 			),
 			403
 		);
@@ -2471,7 +2540,7 @@ function tam_backend_api_handle_ajax_checkout_quote_request() {
 	if ( ! $response['success'] ) {
 		wp_send_json_error(
 			array(
-				'message' => tam_backend_api_get_error_message( $response, __( 'Khong the tinh tong thanh toan luc nay.', 'travel-agency-modern' ), 'checkout/quote' ),
+				'message' => tam_backend_api_get_error_message( $response, __( 'Không thể tính tổng thanh toán lúc này.', 'travel-agency-modern' ), 'checkout/quote' ),
 				'errors'  => $response['errors'],
 				'code'    => tam_backend_api_is_missing_route_response( $response ) ? 'backend_route_missing' : 'quote_failed',
 			),
@@ -2481,7 +2550,7 @@ function tam_backend_api_handle_ajax_checkout_quote_request() {
 
 	wp_send_json_success(
 		array(
-			'message'     => ! empty( $response['message'] ) ? $response['message'] : __( 'Da cap nhat tong thanh toan.', 'travel-agency-modern' ),
+			'message'     => ! empty( $response['message'] ) ? $response['message'] : __( 'Đã cập nhật tổng thanh toán.', 'travel-agency-modern' ),
 			'summary'     => isset( $response['data']['summary'] ) ? $response['data']['summary'] : array(),
 			'couponValid' => ! empty( $response['data']['couponValid'] ),
 		)
@@ -2501,7 +2570,7 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 	if ( ! wp_verify_nonce( $nonce, 'tam_checkout_create_session' ) ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Phien checkout da het han. Vui long tai lai trang.', 'travel-agency-modern' ),
+				'message' => __( 'Phiên checkout đã hết hạn. Vui lòng tải lại trang.', 'travel-agency-modern' ),
 			),
 			403
 		);
@@ -2512,7 +2581,7 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 	if ( ! $auth_token ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Ban can dang nhap truoc khi thanh toan.', 'travel-agency-modern' ),
+				'message' => __( 'Bạn cần đăng nhập trước khi thanh toán.', 'travel-agency-modern' ),
 				'code'    => 'login_required',
 			),
 			401
@@ -2538,7 +2607,7 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 	if ( $api_tour_id < 1 || '' === $request_id || '' === $travel_date ) {
 		wp_send_json_error(
 			array(
-				'message' => __( 'Thieu thong tin de tao phien thanh toan.', 'travel-agency-modern' ),
+				'message' => __( 'Thiếu thông tin để tạo phiên thanh toán.', 'travel-agency-modern' ),
 			),
 			400
 		);
@@ -2576,7 +2645,7 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 	if ( ! $response['success'] ) {
 		wp_send_json_error(
 			array(
-				'message' => tam_backend_api_get_error_message( $response, __( 'Khong the tao booking luc nay.', 'travel-agency-modern' ), 'checkout/session' ),
+				'message' => tam_backend_api_get_error_message( $response, __( 'Không thể tạo booking lúc này.', 'travel-agency-modern' ), 'checkout/session' ),
 				'errors'  => $response['errors'],
 				'code'    => 401 === (int) $response['status']
 					? 'login_required'
@@ -2588,7 +2657,7 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 
 	wp_send_json_success(
 		array(
-			'message'      => ! empty( $response['message'] ) ? $response['message'] : __( 'Da tao phien thanh toan.', 'travel-agency-modern' ),
+			'message'      => ! empty( $response['message'] ) ? $response['message'] : __( 'Đã tạo phiên thanh toán.', 'travel-agency-modern' ),
 			'redirectUrl'  => isset( $response['data']['redirectUrl'] ) ? esc_url_raw( $response['data']['redirectUrl'] ) : '',
 			'booking'      => isset( $response['data']['booking'] ) ? $response['data']['booking'] : array(),
 			'payment'      => isset( $response['data']['payment'] ) ? $response['data']['payment'] : array(),
@@ -2788,7 +2857,7 @@ function tam_backend_api_build_tour_content( $tour ) {
 	}
 
 	if ( ! empty( $tour['overviewCards'] ) && is_array( $tour['overviewCards'] ) ) {
-		$parts[] = '<h2>Tong quan hanh trinh</h2>';
+		$parts[] = '<h2>Tổng quan hành trình</h2>';
 
 		foreach ( $tour['overviewCards'] as $card ) {
 			if ( ! is_array( $card ) ) {
@@ -3080,7 +3149,7 @@ function tam_backend_api_get_storage_access_state() {
 	if ( '' === $bookings_table ) {
 		$state = new WP_Error(
 			'tam_backend_db_missing',
-			__( 'Khong tim thay cau hinh DB cua backend-api. Hay kiem tra file backend-api/.env.', 'travel-agency-modern' )
+			__( 'Không tìm thấy cấu hình DB của backend-api. Hãy kiểm tra file backend-api/.env.', 'travel-agency-modern' )
 		);
 
 		return $state;
@@ -3093,7 +3162,7 @@ function tam_backend_api_get_storage_access_state() {
 			'tam_backend_db_unreachable',
 			sprintf(
 				/* translators: %s: MySQL error from WordPress connection. */
-				__( 'WordPress khong doc duoc DB checkout: %s', 'travel-agency-modern' ),
+				__( 'WordPress không đọc được DB checkout: %s', 'travel-agency-modern' ),
 				$wpdb->last_error
 			)
 		);
@@ -3137,26 +3206,26 @@ function tam_backend_api_get_admin_status_label( $type, $status ) {
 
 	if ( 'booking' === $type ) {
 		$map = array(
-			'PENDING'         => __( 'Cho xac nhan', 'travel-agency-modern' ),
-			'PENDING_PAYMENT' => __( 'Cho thanh toan', 'travel-agency-modern' ),
-			'PAID'            => __( 'Da thanh toan', 'travel-agency-modern' ),
-			'PENDING_CONFIRMATION' => __( 'Cho nhan vien xac nhan', 'travel-agency-modern' ),
-			'CONFIRMED'       => __( 'Da xac nhan', 'travel-agency-modern' ),
-			'COMPLETED'       => __( 'Da hoan thanh', 'travel-agency-modern' ),
-			'CANCELLED'       => __( 'Da huy', 'travel-agency-modern' ),
-			'PAYMENT_FAILED'  => __( 'Thanh toan that bai', 'travel-agency-modern' ),
-			'REFUNDED'        => __( 'Da hoan tien', 'travel-agency-modern' ),
+			'PENDING'         => __( 'Chờ xác nhận', 'travel-agency-modern' ),
+			'PENDING_PAYMENT' => __( 'Chờ thanh toán', 'travel-agency-modern' ),
+			'PAID'            => __( 'Đã thanh toán', 'travel-agency-modern' ),
+			'PENDING_CONFIRMATION' => __( 'Chờ nhân viên xác nhận', 'travel-agency-modern' ),
+			'CONFIRMED'       => __( 'Đã xác nhận', 'travel-agency-modern' ),
+			'COMPLETED'       => __( 'Đã hoàn thành', 'travel-agency-modern' ),
+			'CANCELLED'       => __( 'Đã hủy', 'travel-agency-modern' ),
+			'PAYMENT_FAILED'  => __( 'Thanh toán thất bại', 'travel-agency-modern' ),
+			'REFUNDED'        => __( 'Đã hoàn tiền', 'travel-agency-modern' ),
 		);
 	} else {
 		$map = array(
-			'PENDING'        => __( 'Dang cho xu ly', 'travel-agency-modern' ),
-			'PAID'           => __( 'Da thanh toan', 'travel-agency-modern' ),
-			'PARTIALLY_PAID' => __( 'Da dat coc', 'travel-agency-modern' ),
-			'SUCCESS'        => __( 'Da thanh toan', 'travel-agency-modern' ),
+			'PENDING'        => __( 'Đang chờ xử lý', 'travel-agency-modern' ),
+			'PAID'           => __( 'Đã thanh toán', 'travel-agency-modern' ),
+			'PARTIALLY_PAID' => __( 'Đã đặt cọc', 'travel-agency-modern' ),
+			'SUCCESS'        => __( 'Đã thanh toán', 'travel-agency-modern' ),
 			'FAILED'         => __( 'That bai', 'travel-agency-modern' ),
-			'CANCELLED'      => __( 'Da huy', 'travel-agency-modern' ),
-			'EXPIRED'        => __( 'Het han', 'travel-agency-modern' ),
-			'REFUNDED'       => __( 'Da hoan tien', 'travel-agency-modern' ),
+			'CANCELLED'      => __( 'Đã hủy', 'travel-agency-modern' ),
+			'EXPIRED'        => __( 'Hết hạn', 'travel-agency-modern' ),
+			'REFUNDED'       => __( 'Đã hoàn tiền', 'travel-agency-modern' ),
 		);
 	}
 
@@ -3200,8 +3269,8 @@ function tam_backend_api_get_payment_plan_label( $plan ) {
 	$plan = strtoupper( trim( (string) $plan ) );
 
 	return 'DEPOSIT' === $plan
-		? __( 'Dat coc truoc', 'travel-agency-modern' )
-		: __( 'Thanh toan toan bo', 'travel-agency-modern' );
+		? __( 'Đặt cọc trước', 'travel-agency-modern' )
+		: __( 'Thanh toán toàn bộ', 'travel-agency-modern' );
 }
 
 /**
@@ -3237,7 +3306,7 @@ function tam_backend_api_ensure_admin_audit_table() {
 	$table_name = tam_backend_api_get_storage_table_name( 'booking_audit_logs' );
 
 	if ( '' === $table_name ) {
-		return new WP_Error( 'tam_backend_audit_table_missing', __( 'Khong tim thay bang booking_audit_logs trong DB backend.', 'travel-agency-modern' ) );
+		return new WP_Error( 'tam_backend_audit_table_missing', __( 'Không tìm thấy bảng booking_audit_logs trong DB backend.', 'travel-agency-modern' ) );
 	}
 
 	$create_sql = "
@@ -3303,7 +3372,7 @@ function tam_backend_api_insert_admin_booking_audit_log( $booking_id, $action, $
 	);
 
 	if ( false === $result ) {
-		$error = new WP_Error( 'tam_backend_audit_insert_failed', $wpdb->last_error ? $wpdb->last_error : __( 'Khong the ghi audit log cho booking.', 'travel-agency-modern' ) );
+		$error = new WP_Error( 'tam_backend_audit_insert_failed', $wpdb->last_error ? $wpdb->last_error : __( 'Không thể ghi audit log cho booking.', 'travel-agency-modern' ) );
 		$wpdb->last_error = '';
 
 		return $error;
@@ -3339,7 +3408,7 @@ function tam_backend_api_send_manual_confirmation_email( $detail_payload ) {
 	$transaction_code  = ! empty( $latest_transaction['transaction_code'] ) ? (string) $latest_transaction['transaction_code'] : '';
 	$invoice_url       = $transaction_code ? tam_backend_api_get_checkout_invoice_url( $transaction_code ) : '';
 	$subject           = sprintf(
-		'[%1$s] Booking %2$s da duoc xac nhan',
+		'[%1$s] Booking %2$s đã được xác nhận',
 		$site_name,
 		tam_backend_api_build_booking_ref( isset( $booking['id'] ) ? (int) $booking['id'] : 0 )
 	);
@@ -3349,20 +3418,20 @@ function tam_backend_api_send_manual_confirmation_email( $detail_payload ) {
 			array(
 				'Xin chao ' . $contact_name . ',',
 				'',
-				'Booking tour cua ban da duoc ADN Travel xac nhan chinh thuc.',
-				'Ma booking: ' . tam_backend_api_build_booking_ref( isset( $booking['id'] ) ? (int) $booking['id'] : 0 ),
+				'Booking tour của bạn đã được ADN Travel xác nhận chính thức.',
+				'Mã booking: ' . tam_backend_api_build_booking_ref( isset( $booking['id'] ) ? (int) $booking['id'] : 0 ),
 				'Tour: ' . ( isset( $booking['tour_title'] ) ? (string) $booking['tour_title'] : '' ),
-				'Ngay khoi hanh: ' . tam_backend_api_format_date( isset( $booking['travel_date'] ) ? $booking['travel_date'] : '' ),
+				'Ngày khởi hành: ' . tam_backend_api_format_date( isset( $booking['travel_date'] ) ? $booking['travel_date'] : '' ),
 				'So khach: ' . ( isset( $booking['number_of_people'] ) ? (int) $booking['number_of_people'] : 0 ),
-				'Hinh thuc thanh toan: ' . tam_backend_api_get_payment_plan_label( isset( $booking['payment_plan'] ) ? $booking['payment_plan'] : '' ),
-				'Da thanh toan: ' . tam_backend_api_format_admin_amount( isset( $booking['paid_amount'] ) ? $booking['paid_amount'] : 0 ),
-				'Con lai: ' . tam_backend_api_format_admin_amount( isset( $booking['remaining_amount'] ) ? $booking['remaining_amount'] : 0 ),
-				'Phuong thuc thanh toan: ' . tam_backend_api_get_payment_method_label( isset( $latest_payment['method'] ) ? $latest_payment['method'] : '' ),
+				'Hình thức thanh toan: ' . tam_backend_api_get_payment_plan_label( isset( $booking['payment_plan'] ) ? $booking['payment_plan'] : '' ),
+				'Đã thanh toán: ' . tam_backend_api_format_admin_amount( isset( $booking['paid_amount'] ) ? $booking['paid_amount'] : 0 ),
+				'Còn lại: ' . tam_backend_api_format_admin_amount( isset( $booking['remaining_amount'] ) ? $booking['remaining_amount'] : 0 ),
+				'Phương thức thanh toan: ' . tam_backend_api_get_payment_method_label( isset( $latest_payment['method'] ) ? $latest_payment['method'] : '' ),
 				$invoice_url ? 'Invoice: ' . $invoice_url : '',
 				'',
-				'Ve/QR va hoa don se co san trong trang tai khoan cua ban ngay sau khi dang nhap.',
+				'Vé/QR và hóa đơn sẽ có sẵn trong trang tài khoản của bạn ngay sau khi đăng nhập.',
 				'Chi tiet lich trinh cuoi cung va thong tin huong dan vien se duoc doi ngu van hanh gui bo sung neu tour co cap nhat rieng.',
-				'Tai khoan: ' . tam_backend_api_get_account_url(),
+				'Tài khoản: ' . tam_backend_api_get_account_url(),
 			)
 		)
 	);
@@ -3748,7 +3817,7 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 	$transactions = tam_backend_api_get_storage_table_name( 'payment_transactions' );
 
 	if ( $booking_id <= 0 ) {
-		return new WP_Error( 'tam_backend_action_invalid_booking', __( 'Booking khong hop le.', 'travel-agency-modern' ) );
+		return new WP_Error( 'tam_backend_action_invalid_booking', __( 'Booking không hợp lệ.', 'travel-agency-modern' ) );
 	}
 
 	$row_query = "
@@ -3801,7 +3870,7 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 	}
 
 	if ( empty( $current ) ) {
-		return new WP_Error( 'tam_backend_action_missing_booking', __( 'Khong tim thay booking can xu ly.', 'travel-agency-modern' ) );
+		return new WP_Error( 'tam_backend_action_missing_booking', __( 'Không tìm thấy booking cần xử lý.', 'travel-agency-modern' ) );
 	}
 
 	$booking_status = strtoupper( (string) $current['booking_status'] );
@@ -3816,15 +3885,15 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 	try {
 		if ( 'confirm_booking' === $action_type ) {
 			if ( in_array( $booking_status, array( 'CONFIRMED', 'COMPLETED' ), true ) ) {
-				throw new Exception( __( 'Booking nay da duoc xac nhan truoc do.', 'travel-agency-modern' ) );
+				throw new Exception( __( 'Booking này đã được xác nhận trước đó.', 'travel-agency-modern' ) );
 			}
 
 			if ( ! in_array( $booking_status, array( 'PENDING', 'PENDING_CONFIRMATION', 'PAID' ), true ) ) {
-				throw new Exception( __( 'Chi co the xac nhan booking dang cho xu ly sau thanh toan.', 'travel-agency-modern' ) );
+				throw new Exception( __( 'Chỉ có thể xác nhận booking đang chờ xử lý sau thanh toán.', 'travel-agency-modern' ) );
 			}
 
 			if ( ! in_array( $payment_status, array( 'PAID', 'PARTIALLY_PAID', 'SUCCESS' ), true ) ) {
-				throw new Exception( __( 'Booking nay chua co thanh toan hop le de xac nhan.', 'travel-agency-modern' ) );
+				throw new Exception( __( 'Booking này chưa có thanh toán hợp lệ để xác nhận.', 'travel-agency-modern' ) );
 			}
 
 			$wpdb->update(
@@ -3875,8 +3944,8 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 			return array(
 				'status'  => $mail_sent ? 'success' : 'warning',
 				'message' => $mail_sent
-					? __( 'Booking da duoc xac nhan va email chinh thuc da gui cho khach.', 'travel-agency-modern' )
-					: __( 'Booking da duoc xac nhan, nhung email chinh thuc chua gui duoc.', 'travel-agency-modern' ),
+					? __( 'Booking đã được xác nhận và email chính thức đã gửi cho khách.', 'travel-agency-modern' )
+					: __( 'Booking đã được xác nhận, nhưng email chính thức chưa gửi được.', 'travel-agency-modern' ),
 			);
 		}
 
@@ -3886,7 +3955,7 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 			}
 
 			if ( 'COMPLETED' === $booking_status ) {
-				throw new Exception( __( 'Khong the huy booking da hoan thanh.', 'travel-agency-modern' ) );
+				throw new Exception( __( 'Không thể hủy booking đã hoàn thành.', 'travel-agency-modern' ) );
 			}
 
 			$wpdb->update(
@@ -3919,7 +3988,7 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 
 			return array(
 				'status'  => 'success',
-				'message' => __( 'Booking da duoc chuyen sang trang thai da huy.', 'travel-agency-modern' ),
+				'message' => __( 'Booking đã được chuyển sang trạng thái đã hủy.', 'travel-agency-modern' ),
 			);
 		}
 
@@ -3929,7 +3998,7 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 			}
 
 			if ( empty( $current['payment_id'] ) ) {
-				throw new Exception( __( 'Khong tim thay payment de xu ly hoan tien.', 'travel-agency-modern' ) );
+				throw new Exception( __( 'Không tìm thấy payment để xử lý hoàn tiền.', 'travel-agency-modern' ) );
 			}
 
 			$refund_amount = (float) ( ! empty( $current['payment_paid_amount'] ) ? $current['payment_paid_amount'] : ( ! empty( $current['payment_amount'] ) ? $current['payment_amount'] : $paid_amount ) );
@@ -3991,11 +4060,11 @@ function tam_backend_api_run_admin_booking_action( $booking_id, $action_type ) {
 
 			return array(
 				'status'  => 'success',
-				'message' => __( 'Da cap nhat trang thai hoan tien cho booking nay.', 'travel-agency-modern' ),
+				'message' => __( 'Đã cập nhật trạng thái hoàn tiền cho booking này.', 'travel-agency-modern' ),
 			);
 		}
 
-		throw new Exception( __( 'Hanh dong khong hop le.', 'travel-agency-modern' ) );
+		throw new Exception( __( 'Hành động không hợp lệ.', 'travel-agency-modern' ) );
 	} catch ( Exception $exception ) {
 		if ( ! $did_commit ) {
 			$wpdb->query( 'ROLLBACK' );
@@ -4022,7 +4091,7 @@ function tam_backend_api_handle_admin_booking_action() {
 	$redirect_to  = isset( $_POST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_to'] ) ) : admin_url( 'tools.php?page=tam-backend-bookings' );
 	$result       = tam_backend_api_run_admin_booking_action( $booking_id, $action_type );
 	$status       = is_wp_error( $result ) ? 'error' : ( ! empty( $result['status'] ) ? $result['status'] : 'success' );
-	$message      = is_wp_error( $result ) ? $result->get_error_message() : ( ! empty( $result['message'] ) ? $result['message'] : __( 'Da cap nhat booking.', 'travel-agency-modern' ) );
+	$message      = is_wp_error( $result ) ? $result->get_error_message() : ( ! empty( $result['message'] ) ? $result['message'] : __( 'Đã cập nhật booking.', 'travel-agency-modern' ) );
 	$redirect_to  = add_query_arg(
 		array(
 			'booking_admin_status'  => $status,
@@ -4111,15 +4180,15 @@ function tam_backend_api_render_bookings_page() {
 		<?php if ( ! is_wp_error( $stats ) ) : ?>
 			<div class="tam-backend-bookings__grid">
 				<div class="tam-backend-bookings__card">
-					<h2><?php esc_html_e( 'Tong booking', 'travel-agency-modern' ); ?></h2>
+					<h2><?php esc_html_e( 'Tổng booking', 'travel-agency-modern' ); ?></h2>
 					<div class="tam-backend-bookings__metric"><?php echo esc_html( number_format_i18n( $stats['total_bookings'] ) ); ?></div>
 				</div>
 				<div class="tam-backend-bookings__card">
-					<h2><?php esc_html_e( 'Cho xu ly', 'travel-agency-modern' ); ?></h2>
+					<h2><?php esc_html_e( 'Chờ xử lý', 'travel-agency-modern' ); ?></h2>
 					<div class="tam-backend-bookings__metric"><?php echo esc_html( number_format_i18n( $stats['pending_bookings'] ) ); ?></div>
 				</div>
 				<div class="tam-backend-bookings__card">
-					<h2><?php esc_html_e( 'Da xac nhan', 'travel-agency-modern' ); ?></h2>
+					<h2><?php esc_html_e( 'Đã xác nhận', 'travel-agency-modern' ); ?></h2>
 					<div class="tam-backend-bookings__metric"><?php echo esc_html( number_format_i18n( $stats['confirmed_bookings'] ) ); ?></div>
 				</div>
 				<div class="tam-backend-bookings__card">
@@ -4132,29 +4201,29 @@ function tam_backend_api_render_bookings_page() {
 		<form method="get" class="tam-backend-bookings__filters">
 			<input type="hidden" name="page" value="tam-backend-bookings" />
 			<div class="field">
-				<label for="tam-backend-search"><?php esc_html_e( 'Tim kiem', 'travel-agency-modern' ); ?></label>
+				<label for="tam-backend-search"><?php esc_html_e( 'Tìm kiếm', 'travel-agency-modern' ); ?></label>
 				<input id="tam-backend-search" type="search" name="s" class="regular-text" value="<?php echo esc_attr( $search_term ); ?>" placeholder="<?php esc_attr_e( 'Booking, tour, email, transaction...', 'travel-agency-modern' ); ?>" />
 			</div>
 			<div class="field">
-				<label for="tam-backend-status"><?php esc_html_e( 'Trang thai booking', 'travel-agency-modern' ); ?></label>
+				<label for="tam-backend-status"><?php esc_html_e( 'Trạng thái booking', 'travel-agency-modern' ); ?></label>
 				<select id="tam-backend-status" name="status">
-					<option value=""><?php esc_html_e( 'Tat ca', 'travel-agency-modern' ); ?></option>
+					<option value=""><?php esc_html_e( 'Tất cả', 'travel-agency-modern' ); ?></option>
 					<?php foreach ( array( 'PENDING', 'PENDING_PAYMENT', 'PAYMENT_FAILED', 'PAID', 'PENDING_CONFIRMATION', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'REFUNDED' ) as $status_option ) : ?>
 						<option value="<?php echo esc_attr( $status_option ); ?>" <?php selected( strtoupper( $status_filter ), $status_option ); ?>><?php echo esc_html( tam_backend_api_get_admin_status_label( 'booking', $status_option ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
 			<div class="field">
-				<label for="tam-backend-payment-status"><?php esc_html_e( 'Trang thai thanh toan', 'travel-agency-modern' ); ?></label>
+				<label for="tam-backend-payment-status"><?php esc_html_e( 'Trạng thái thanh toan', 'travel-agency-modern' ); ?></label>
 				<select id="tam-backend-payment-status" name="payment_status">
-					<option value=""><?php esc_html_e( 'Tat ca', 'travel-agency-modern' ); ?></option>
+					<option value=""><?php esc_html_e( 'Tất cả', 'travel-agency-modern' ); ?></option>
 					<?php foreach ( array( 'PENDING', 'PAID', 'PARTIALLY_PAID', 'FAILED', 'REFUNDED', 'CANCELLED', 'EXPIRED' ) as $status_option ) : ?>
 						<option value="<?php echo esc_attr( $status_option ); ?>" <?php selected( strtoupper( $payment_filter ), $status_option ); ?>><?php echo esc_html( tam_backend_api_get_admin_status_label( 'payment', $status_option ) ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
 			<div class="field">
-				<button type="submit" class="button button-primary"><?php esc_html_e( 'Loc du lieu', 'travel-agency-modern' ); ?></button>
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Lọc dữ liệu', 'travel-agency-modern' ); ?></button>
 				<a href="<?php echo esc_url( $base_url ); ?>" class="button"><?php esc_html_e( 'Reset', 'travel-agency-modern' ); ?></a>
 			</div>
 		</form>
@@ -4164,7 +4233,7 @@ function tam_backend_api_render_bookings_page() {
 			<?php if ( is_wp_error( $detail_payload ) ) : ?>
 				<div class="notice notice-error"><p><?php echo esc_html( $detail_payload->get_error_message() ); ?></p></div>
 			<?php elseif ( empty( $detail_payload['booking'] ) ) : ?>
-				<div class="notice notice-warning"><p><?php esc_html_e( 'Khong tim thay booking trong DB backend.', 'travel-agency-modern' ); ?></p></div>
+				<div class="notice notice-warning"><p><?php esc_html_e( 'Không tìm thấy booking trong DB backend.', 'travel-agency-modern' ); ?></p></div>
 			<?php else : ?>
 				<?php
 				$booking                = $detail_payload['booking'];
@@ -4182,17 +4251,17 @@ function tam_backend_api_render_bookings_page() {
 							<li><strong><?php esc_html_e( 'Tour', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $booking['tour_title'] ); ?></span></li>
 							<li><strong><?php esc_html_e( 'Khoi hanh', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_date( $booking['travel_date'] ) ); ?></span></li>
 							<li><strong><?php esc_html_e( 'So khach', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( (int) $booking['number_of_people'] ); ?></span></li>
-							<li><strong><?php esc_html_e( 'Tong tien', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_admin_amount( $booking['total_price'] ) ); ?></span></li>
-							<li><strong><?php esc_html_e( 'Da thanh toan', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_admin_amount( $booking['paid_amount'] ) ); ?></span></li>
-							<li><strong><?php esc_html_e( 'Con lai', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_admin_amount( $booking['remaining_amount'] ) ); ?></span></li>
-							<li><strong><?php esc_html_e( 'Hinh thuc', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_get_payment_plan_label( isset( $booking['payment_plan'] ) ? $booking['payment_plan'] : '' ) ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Tổng tiền', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_admin_amount( $booking['total_price'] ) ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Đã thanh toán', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_admin_amount( $booking['paid_amount'] ) ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Còn lại', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_format_admin_amount( $booking['remaining_amount'] ) ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Hình thức', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_backend_api_get_payment_plan_label( isset( $booking['payment_plan'] ) ? $booking['payment_plan'] : '' ) ); ?></span></li>
 							<li><strong><?php esc_html_e( 'Payment status', 'travel-agency-modern' ); ?></strong><span><?php echo wp_kses_post( tam_backend_api_get_admin_status_badge( 'payment', $current_payment_status ) ); ?></span></li>
 							<li><strong><?php esc_html_e( 'Confirmed by', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( ! empty( $booking['confirmed_by'] ) ? $booking['confirmed_by'] : '—' ); ?></span></li>
 							<li><strong><?php esc_html_e( 'Confirmed at', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( ! empty( $booking['confirmed_at'] ) ? tam_backend_api_format_datetime( $booking['confirmed_at'] ) : '—' ); ?></span></li>
-							<li><strong><?php esc_html_e( 'Nguoi dung backend', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( trim( (string) $booking['user_name'] ) ? $booking['user_name'] . ' · ' . $booking['user_email'] : $booking['user_email'] ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Người dùng backend', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( trim( (string) $booking['user_name'] ) ? $booking['user_name'] . ' · ' . $booking['user_email'] : $booking['user_email'] ); ?></span></li>
 							<li><strong><?php esc_html_e( 'Lien he checkout', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( trim( (string) $booking['contact_name'] ) ? $booking['contact_name'] . ' · ' . $booking['contact_email'] : $booking['contact_email'] ); ?></span></li>
-							<li><strong><?php esc_html_e( 'So dien thoai', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $booking['contact_phone'] ? $booking['contact_phone'] : $booking['user_phone'] ); ?></span></li>
-							<li><strong><?php esc_html_e( 'Quoc gia', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $booking['contact_country'] ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Số điện thoại', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $booking['contact_phone'] ? $booking['contact_phone'] : $booking['user_phone'] ); ?></span></li>
+							<li><strong><?php esc_html_e( 'Quốc gia', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $booking['contact_country'] ); ?></span></li>
 						</ul>
 						<?php if ( ! empty( $booking['special_requests'] ) ) : ?>
 							<p><strong><?php esc_html_e( 'Ghi chu', 'travel-agency-modern' ); ?>:</strong> <?php echo esc_html( $booking['special_requests'] ); ?></p>
@@ -4231,7 +4300,7 @@ function tam_backend_api_render_bookings_page() {
 							<p class="tam-backend-bookings__muted"><?php esc_html_e( 'Chua co payment nao cho booking nay.', 'travel-agency-modern' ); ?></p>
 						<?php else : ?>
 							<table class="widefat striped tam-backend-bookings__table">
-								<thead><tr><th>ID</th><th><?php esc_html_e( 'Phuong thuc', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Hinh thuc', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Da thu', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Con lai', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Trang thai', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Paid at', 'travel-agency-modern' ); ?></th></tr></thead>
+								<thead><tr><th>ID</th><th><?php esc_html_e( 'Phương thức', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Hình thức', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Đã thu', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Còn lại', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Trạng thái', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Paid at', 'travel-agency-modern' ); ?></th></tr></thead>
 								<tbody>
 									<?php foreach ( $detail_payload['payments'] as $payment ) : ?>
 										<tr>
@@ -4250,12 +4319,12 @@ function tam_backend_api_render_bookings_page() {
 					</div>
 
 					<div class="tam-backend-bookings__card">
-						<h3><?php esc_html_e( 'Lich su giao dich', 'travel-agency-modern' ); ?></h3>
+						<h3><?php esc_html_e( 'Lịch sử giao dịch', 'travel-agency-modern' ); ?></h3>
 						<?php if ( empty( $detail_payload['transactions'] ) ) : ?>
 							<p class="tam-backend-bookings__muted"><?php esc_html_e( 'Chua co transaction nao cho booking nay.', 'travel-agency-modern' ); ?></p>
 						<?php else : ?>
 							<table class="widefat striped tam-backend-bookings__table">
-								<thead><tr><th><?php esc_html_e( 'Transaction', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Provider', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Hinh thuc', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Da thu', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Tong', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Trang thai', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Coupon', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Completed', 'travel-agency-modern' ); ?></th></tr></thead>
+								<thead><tr><th><?php esc_html_e( 'Transaction', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Provider', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Hình thức', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Đã thu', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Tong', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Trạng thái', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Coupon', 'travel-agency-modern' ); ?></th><th><?php esc_html_e( 'Completed', 'travel-agency-modern' ); ?></th></tr></thead>
 								<tbody>
 									<?php foreach ( $detail_payload['transactions'] as $transaction ) : ?>
 										<tr>
@@ -4279,16 +4348,16 @@ function tam_backend_api_render_bookings_page() {
 
 		<?php if ( ! is_wp_error( $list_payload ) ) : ?>
 			<div class="tam-backend-bookings__card">
-				<h2><?php esc_html_e( 'Danh sach booking backend', 'travel-agency-modern' ); ?></h2>
+				<h2><?php esc_html_e( 'Danh sách booking backend', 'travel-agency-modern' ); ?></h2>
 				<table class="widefat striped tam-backend-bookings__table">
 					<thead>
 						<tr>
 							<th><?php esc_html_e( 'Booking', 'travel-agency-modern' ); ?></th>
-							<th><?php esc_html_e( 'Khach hang', 'travel-agency-modern' ); ?></th>
+							<th><?php esc_html_e( 'Khách hàng', 'travel-agency-modern' ); ?></th>
 							<th><?php esc_html_e( 'Tour', 'travel-agency-modern' ); ?></th>
-							<th><?php esc_html_e( 'Trang thai', 'travel-agency-modern' ); ?></th>
-							<th><?php esc_html_e( 'Thanh toan', 'travel-agency-modern' ); ?></th>
-							<th><?php esc_html_e( 'Tong tien', 'travel-agency-modern' ); ?></th>
+							<th><?php esc_html_e( 'Trạng thái', 'travel-agency-modern' ); ?></th>
+							<th><?php esc_html_e( 'Thanh toán', 'travel-agency-modern' ); ?></th>
+							<th><?php esc_html_e( 'Tổng tiền', 'travel-agency-modern' ); ?></th>
 							<th><?php esc_html_e( 'Hanh dong', 'travel-agency-modern' ); ?></th>
 						</tr>
 					</thead>
@@ -4328,7 +4397,7 @@ function tam_backend_api_render_bookings_page() {
 									</td>
 									<td><strong><?php echo esc_html( tam_backend_api_format_admin_amount( $item['total_price'] ) ); ?></strong></td>
 									<td>
-										<a class="button button-small" href="<?php echo esc_url( add_query_arg( 'booking_id', (int) $item['id'], $base_url ) ); ?>"><?php esc_html_e( 'Xem chi tiet', 'travel-agency-modern' ); ?></a>
+										<a class="button button-small" href="<?php echo esc_url( add_query_arg( 'booking_id', (int) $item['id'], $base_url ) ); ?>"><?php esc_html_e( 'Xem chi tiết', 'travel-agency-modern' ); ?></a>
 										<?php if ( in_array( strtoupper( (string) ( ! empty( $item['booking_status'] ) ? $item['booking_status'] : $item['status'] ) ), array( 'PENDING', 'PENDING_CONFIRMATION', 'PAID' ), true ) && in_array( strtoupper( (string) ( ! empty( $item['booking_payment_status'] ) ? $item['booking_payment_status'] : $item['payment_status'] ) ), array( 'PAID', 'PARTIALLY_PAID', 'SUCCESS' ), true ) ) : ?>
 											<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:6px;">
 												<?php wp_nonce_field( 'tam_backend_booking_action', 'tam_backend_booking_nonce' ); ?>

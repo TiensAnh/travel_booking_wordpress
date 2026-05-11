@@ -48,20 +48,20 @@ exports.createReview = async (req, res) => {
   const comment = String(req.body.comment || '').trim();
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    return res.status(400).json({ message: 'Booking khong hop le.' });
+    return res.status(400).json({ message: 'Booking không hợp lệ.' });
   }
 
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return res.status(400).json({ message: 'So sao phai tu 1 den 5.' });
+    return res.status(400).json({ message: 'Số sao phải từ 1 đến 5.' });
   }
 
   if (!comment) {
-    return res.status(400).json({ message: 'Vui long nhap noi dung danh gia.' });
+    return res.status(400).json({ message: 'Vui lòng nhập nội dung đánh giá.' });
   }
 
   try {
     const [bookings] = await db.query(
-      `SELECT id, user_id, tour_id, status
+      `SELECT id, user_id, tour_id, COALESCE(NULLIF(booking_status, ''), status) AS booking_status
        FROM bookings
        WHERE id = ? AND user_id = ?
        LIMIT 1`,
@@ -69,11 +69,11 @@ exports.createReview = async (req, res) => {
     );
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking de danh gia.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking để đánh giá.' });
     }
 
-    if (bookings[0].status !== 'COMPLETED') {
-      return res.status(400).json({ message: 'Chi booking da hoan thanh moi duoc danh gia.' });
+    if (String(bookings[0].booking_status || '').toUpperCase() !== 'COMPLETED') {
+      return res.status(400).json({ message: 'Chỉ booking đã hoàn thành mới được đánh giá.' });
     }
 
     const [existingReviews] = await db.query(
@@ -82,7 +82,7 @@ exports.createReview = async (req, res) => {
     );
 
     if (existingReviews.length > 0) {
-      return res.status(400).json({ message: 'Booking nay da duoc danh gia truoc do.' });
+      return res.status(400).json({ message: 'Booking này đã được đánh giá trước đó.' });
     }
 
     const [insertResult] = await db.query(
@@ -94,12 +94,12 @@ exports.createReview = async (req, res) => {
     const review = await getReviewById(insertResult.insertId);
 
     return res.status(201).json({
-      message: 'Gui danh gia thanh cong.',
+      message: 'Gửi đánh giá thành công.',
       review,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the gui danh gia luc nay.',
+      message: 'Không thể gửi đánh giá lúc này.',
       error: error.message,
     });
   }
@@ -123,12 +123,12 @@ exports.getMyReviews = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach danh gia thanh cong.',
+      message: 'Lấy danh sách đánh giá thành công.',
       reviews: rows.map(serializeReview),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay danh sach danh gia.',
+      message: 'Không thể lấy danh sách đánh giá.',
       error: error.message,
     });
   }
@@ -138,7 +138,7 @@ exports.getReviewsByTourId = async (req, res) => {
   const tourId = Number(req.params.tourId);
 
   if (!Number.isInteger(tourId) || tourId <= 0) {
-    return res.status(400).json({ message: 'Ma tour khong hop le.' });
+    return res.status(400).json({ message: 'Mã tour không hợp lệ.' });
   }
 
   try {
@@ -158,12 +158,12 @@ exports.getReviewsByTourId = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach danh gia tour thanh cong.',
+      message: 'Lấy danh sách đánh giá tour thành công.',
       reviews: rows.map(serializeReview),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay danh gia cua tour.',
+      message: 'Không thể lấy đánh giá của tour.',
       error: error.message,
     });
   }
@@ -207,12 +207,12 @@ exports.getAllReviews = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach danh gia thanh cong.',
+      message: 'Lấy danh sách đánh giá thành công.',
       reviews: rows.map(serializeReview),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay danh sach danh gia.',
+      message: 'Không thể lấy danh sách đánh giá.',
       error: error.message,
     });
   }
@@ -223,7 +223,7 @@ exports.updateReviewStatus = async (req, res) => {
   const status = normalizeReviewStatus(req.body.status);
 
   if (!Number.isInteger(reviewId) || reviewId <= 0) {
-    return res.status(400).json({ message: 'Ma danh gia khong hop le.' });
+    return res.status(400).json({ message: 'Mã đánh giá không hợp lệ.' });
   }
 
   try {
@@ -233,15 +233,15 @@ exports.updateReviewStatus = async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Khong tim thay danh gia.' });
+      return res.status(404).json({ message: 'Không tìm thấy đánh giá.' });
     }
 
     return res.status(200).json({
-      message: 'Cap nhat trang thai danh gia thanh cong.',
+      message: 'Cập nhật trạng thái đánh giá thành công.',
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the cap nhat trang thai danh gia.',
+      message: 'Không thể cập nhật trạng thái đánh giá.',
       error: error.message,
     });
   }

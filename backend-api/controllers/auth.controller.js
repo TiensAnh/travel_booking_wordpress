@@ -46,31 +46,31 @@ exports.register = async (req, res) => {
   const validationErrors = {};
 
   if (!fullName) {
-    validationErrors.fullName = 'Vui long nhap ho va ten.';
+    validationErrors.fullName = 'Vui lòng nhập họ và tên.';
   }
 
   if (!phone) {
-    validationErrors.phone = 'Vui long nhap so dien thoai.';
+    validationErrors.phone = 'Vui lòng nhập số điện thoại.';
   } else if (!PHONE_REGEX.test(phone)) {
-    validationErrors.phone = 'So dien thoai phai gom 9 den 11 chu so.';
+    validationErrors.phone = 'Số điện thoại phải gồm 9 đến 11 chữ số.';
   }
 
   if (!email) {
-    validationErrors.email = 'Vui long nhap email.';
+    validationErrors.email = 'Vui lòng nhập email.';
   } else if (!EMAIL_REGEX.test(email)) {
-    validationErrors.email = 'Email khong dung dinh dang.';
+    validationErrors.email = 'Email không đúng định dạng.';
   }
 
   if (!password) {
-    validationErrors.password = 'Vui long nhap mat khau.';
+    validationErrors.password = 'Vui lòng nhập mật khẩu.';
   } else if (password.length < 6) {
-    validationErrors.password = 'Mat khau phai co it nhat 6 ky tu.';
+    validationErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự.';
   }
 
   if (!confirmPassword) {
-    validationErrors.confirmPassword = 'Vui long nhap lai mat khau.';
+    validationErrors.confirmPassword = 'Vui lòng nhập lại mật khẩu.';
   } else if (password !== confirmPassword) {
-    validationErrors.confirmPassword = 'Mat khau xac nhan chua khop.';
+    validationErrors.confirmPassword = 'Mật khẩu xác nhận chưa khớp.';
   }
 
   if (Object.keys(validationErrors).length > 0) {
@@ -92,13 +92,13 @@ exports.register = async (req, res) => {
       }
 
       if (user.phone === phone) {
-        validationErrors.phone = 'So dien thoai da duoc su dung.';
+        validationErrors.phone = 'Số điện thoại da duoc su dung.';
       }
     });
 
     if (Object.keys(validationErrors).length > 0) {
       return res.status(409).json({
-        message: 'Thong tin dang ky bi trung.',
+        message: 'Thông tin đăng ký bị trùng.',
         errors: validationErrors,
       });
     }
@@ -118,13 +118,13 @@ exports.register = async (req, res) => {
     };
 
     return res.status(201).json({
-      message: 'Dang ky thanh cong.',
+      message: 'Đăng ký thành công.',
       token: buildToken(user),
       user: sanitizeUser(user),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the tao tai khoan luc nay.',
+      message: 'Không thể tạo tài khoản lúc này.',
       error: error.message,
     });
   }
@@ -132,7 +132,7 @@ exports.register = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   return res.status(200).json({
-    message: 'Lay thong tin nguoi dung thanh cong.',
+    message: 'Lấy thông tin người dùng thành công.',
     user: req.user,
   });
 };
@@ -143,13 +143,13 @@ exports.login = async (req, res) => {
 
   if (!email || !password) {
     return res.status(400).json({
-      message: 'Email va mat khau khong duoc de trong.',
+      message: 'Email và mật khẩu không được để trống.',
     });
   }
 
   if (!EMAIL_REGEX.test(email)) {
     return res.status(400).json({
-      message: 'Email khong dung dinh dang.',
+      message: 'Email không đúng định dạng.',
     });
   }
 
@@ -158,7 +158,7 @@ exports.login = async (req, res) => {
 
     if (users.length === 0) {
       return res.status(401).json({
-        message: 'Email hoac mat khau khong chinh xac.',
+        message: 'Email hoặc mật khẩu không chính xác.',
       });
     }
 
@@ -169,7 +169,7 @@ exports.login = async (req, res) => {
 
     if (!passwordMatches) {
       return res.status(401).json({
-        message: 'Email hoac mat khau khong chinh xac.',
+        message: 'Email hoặc mật khẩu không chính xác.',
       });
     }
 
@@ -179,13 +179,13 @@ exports.login = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'Dang nhap thanh cong.',
+      message: 'Đăng nhập thành công.',
       token: buildToken(user),
       user: sanitizeUser(user),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the dang nhap luc nay.',
+      message: 'Không thể đăng nhập lúc này.',
       error: error.message,
     });
   }

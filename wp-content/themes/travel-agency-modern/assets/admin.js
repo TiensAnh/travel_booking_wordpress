@@ -3,7 +3,7 @@
   const confirmTitle = strings.confirmTitle || "Xac nhan thao tac";
   const confirmButton = strings.confirmButton || "Tiep tuc";
   const cancelButton = strings.cancelButton || "Huy";
-  const defaultMessage = strings.defaultMessage || "Ban co chac muon thuc hien thao tac nay khong?";
+  const defaultMessage = strings.defaultMessage || "Bạn có chắc muốn thực hiện thao tác này không?";
 
   let pendingForm = null;
   let modal = null;

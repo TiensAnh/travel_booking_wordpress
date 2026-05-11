@@ -2,21 +2,45 @@ const db = require('../config/db');
 const {
   BOOKING_STATUSES,
   BOOKING_PAYMENT_STATUSES,
+  PAYMENT_RECORD_STATUSES,
 } = require('../services/bookingWorkflow.service');
 
 function resolveBookingStatus(booking) {
   return String(booking.booking_status || booking.status || '').toUpperCase();
 }
 
+function canUserCompleteBooking(booking) {
+  const resolvedStatus = resolveBookingStatus(booking);
+  const bookingPaymentStatus = String(booking.booking_payment_status || booking.payment_status || '').toUpperCase();
+  const paymentRecordStatus = String(booking.payment_record_status || booking.latest_payment_status || '').toUpperCase();
+  const paidStatuses = [
+    BOOKING_PAYMENT_STATUSES.PAID,
+    BOOKING_PAYMENT_STATUSES.PARTIALLY_PAID,
+    PAYMENT_RECORD_STATUSES.SUCCESS,
+    'SUCCESS',
+  ];
+
+  return [
+    BOOKING_STATUSES.PAID,
+    BOOKING_STATUSES.PENDING_CONFIRMATION,
+    BOOKING_STATUSES.CONFIRMED,
+  ].includes(resolvedStatus) && (
+    paidStatuses.includes(bookingPaymentStatus) || paidStatuses.includes(paymentRecordStatus)
+  );
+}
+
 function addReviewState(booking) {
   const hasReview = Boolean(booking.review_id);
   const resolvedStatus = resolveBookingStatus(booking);
+  const canCompleteTrip = canUserCompleteBooking(booking);
 
   return {
     ...booking,
     review_id: booking.review_id || null,
     status: resolvedStatus,
     has_review: hasReview,
+    can_complete: canCompleteTrip,
+    can_complete_trip: canCompleteTrip,
     can_review: resolvedStatus === BOOKING_STATUSES.COMPLETED && !hasReview,
   };
 }
@@ -33,13 +57,13 @@ exports.createBooking = async (req, res) => {
 
   if (!tour_id || !travel_date || !number_of_people) {
     return res.status(400).json({
-      message: 'Vui long cung cap tour_id, travel_date va number_of_people.',
+      message: 'Vui lòng cung cấp tour_id, travel_date và number_of_people.',
     });
   }
 
   const numPeople = Number(number_of_people);
   if (!Number.isInteger(numPeople) || numPeople <= 0) {
-    return res.status(400).json({ message: 'So nguoi phai la so nguyen duong.' });
+    return res.status(400).json({ message: 'Số người phải là số nguyên dương.' });
   }
 
   try {
@@ -49,13 +73,13 @@ exports.createBooking = async (req, res) => {
     );
 
     if (tours.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay tour.' });
+      return res.status(404).json({ message: 'Không tìm thấy tour.' });
     }
 
     const tour = tours[0];
 
     if (tour.status !== 'Active') {
-      return res.status(400).json({ message: 'Tour nay hien khong nhan dat.' });
+      return res.status(400).json({ message: 'Tour này hiện không nhận đặt.' });
     }
 
     if (tour.max_people && numPeople > tour.max_people) {
@@ -94,11 +118,11 @@ exports.createBooking = async (req, res) => {
     );
 
     return res.status(201).json({
-      message: 'Dat tour thanh cong.',
+      message: 'Đặt tour thành công.',
       booking: rows[0],
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the dat tour luc nay.', error: error.message });
+    return res.status(500).json({ message: 'Không thể đặt tour lúc này.', error: error.message });
   }
 };
 
@@ -126,7 +150,7 @@ exports.getMyBookings = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach booking thanh cong.',
+      message: 'Lấy danh sách booking thành công.',
       bookings: rows.map((booking) => addReviewState({
         ...booking,
         payment: booking.payment_id
@@ -141,7 +165,7 @@ exports.getMyBookings = async (req, res) => {
       })),
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay danh sach booking.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy danh sách booking.', error: error.message });
   }
 };
 
@@ -152,7 +176,7 @@ exports.getMyBookingById = async (req, res) => {
   const bookingId = Number(req.params.id);
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    return res.status(400).json({ message: 'Ma booking khong hop le.' });
+    return res.status(400).json({ message: 'Mã booking không hợp lệ.' });
   }
 
   try {
@@ -168,7 +192,7 @@ exports.getMyBookingById = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
     }
 
     // Lấy thêm payment info
@@ -178,11 +202,11 @@ exports.getMyBookingById = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay chi tiet booking thanh cong.',
+      message: 'Lấy chi tiết booking thành công.',
       booking: { ...addReviewState(rows[0]), payment: payments[0] || null },
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay chi tiet booking.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy chi tiết booking.', error: error.message });
   }
 };
 
@@ -193,7 +217,7 @@ exports.cancelMyBooking = async (req, res) => {
   const bookingId = Number(req.params.id);
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    return res.status(400).json({ message: 'Ma booking khong hop le.' });
+    return res.status(400).json({ message: 'Mã booking không hợp lệ.' });
   }
 
   try {
@@ -203,21 +227,21 @@ exports.cancelMyBooking = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
     }
 
     const booking = rows[0];
 
     if (booking.booking_status === BOOKING_STATUSES.CANCELLED) {
-      return res.status(400).json({ message: 'Booking nay da duoc huy truoc do.' });
+      return res.status(400).json({ message: 'Booking này đã được hủy trước đó.' });
     }
 
     if (booking.booking_status === BOOKING_STATUSES.COMPLETED) {
-      return res.status(400).json({ message: 'Booking da hoan thanh, khong the huy.' });
+      return res.status(400).json({ message: 'Booking đã hoàn thành, không thể hủy.' });
     }
 
     if (booking.booking_status === BOOKING_STATUSES.CONFIRMED) {
-      return res.status(400).json({ message: 'Booking da duoc xac nhan, lien he admin de huy.' });
+      return res.status(400).json({ message: 'Booking đã được xác nhận, liên hệ admin để hủy.' });
     }
 
     await db.query(
@@ -225,12 +249,73 @@ exports.cancelMyBooking = async (req, res) => {
       [BOOKING_STATUSES.CANCELLED, BOOKING_STATUSES.CANCELLED, bookingId],
     );
 
-    return res.status(200).json({ message: 'Huy booking thanh cong.' });
+    return res.status(200).json({ message: 'Hủy booking thành công.' });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the huy booking luc nay.', error: error.message });
+    return res.status(500).json({ message: 'Không thể hủy booking lúc này.', error: error.message });
   }
 };
 
+// PUT /api/bookings/my/:id/complete
+// User xác nhận chuyến đi đã hoàn thành để mở quyền đánh giá
+exports.completeMyBooking = async (req, res) => {
+  const userId = req.user.id;
+  const bookingId = Number(req.params.id);
+
+  if (!Number.isInteger(bookingId) || bookingId <= 0) {
+    return res.status(400).json({ message: 'Mã booking không hợp lệ.' });
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT b.id, b.user_id, b.tour_id, b.status,
+              COALESCE(NULLIF(b.booking_status, ''), b.status) AS booking_status,
+              COALESCE(NULLIF(b.payment_status, ''), 'PENDING') AS booking_payment_status,
+              (SELECT p.status FROM payments p WHERE p.booking_id = b.id ORDER BY p.id DESC LIMIT 1) AS payment_record_status,
+              r.id AS review_id
+       FROM bookings b
+       LEFT JOIN reviews r ON r.booking_id = b.id
+       WHERE b.id = ? AND b.user_id = ?
+       LIMIT 1`,
+      [bookingId, userId],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
+    }
+
+    const booking = rows[0];
+    const resolvedStatus = resolveBookingStatus(booking);
+
+    if (resolvedStatus === BOOKING_STATUSES.COMPLETED) {
+      return res.status(200).json({
+        message: 'Chuyến đi đã được đánh dấu hoàn thành trước đó.',
+        booking: addReviewState(booking),
+      });
+    }
+
+    if (!canUserCompleteBooking(booking)) {
+      return res.status(400).json({
+        message: 'Chỉ booking đã thanh toán hoặc đã xác nhận mới được đánh dấu hoàn thành.',
+      });
+    }
+
+    await db.query(
+      'UPDATE bookings SET status = ?, booking_status = ? WHERE id = ? AND user_id = ?',
+      [BOOKING_STATUSES.COMPLETED, BOOKING_STATUSES.COMPLETED, bookingId, userId],
+    );
+
+    return res.status(200).json({
+      message: 'Đã đánh dấu hoàn thành chuyến đi. Bạn có thể gửi đánh giá.',
+      booking: addReviewState({
+        ...booking,
+        status: BOOKING_STATUSES.COMPLETED,
+        booking_status: BOOKING_STATUSES.COMPLETED,
+      }),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Không thể hoàn thành chuyến đi lúc này.', error: error.message });
+  }
+};
 // =====================================================
 // ADMIN APIS
 // =====================================================
@@ -269,12 +354,12 @@ exports.getAllBookings = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach booking thanh cong.',
+      message: 'Lấy danh sách booking thành công.',
       total: rows.length,
       bookings: rows,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay danh sach booking.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy danh sách booking.', error: error.message });
   }
 };
 
@@ -284,7 +369,7 @@ exports.getBookingById = async (req, res) => {
   const bookingId = Number(req.params.id);
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    return res.status(400).json({ message: 'Ma booking khong hop le.' });
+    return res.status(400).json({ message: 'Mã booking không hợp lệ.' });
   }
 
   try {
@@ -300,7 +385,7 @@ exports.getBookingById = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
     }
 
     // Lấy danh sách hành khách
@@ -316,7 +401,7 @@ exports.getBookingById = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay chi tiet booking thanh cong.',
+      message: 'Lấy chi tiết booking thành công.',
       booking: {
         ...rows[0],
         customers,
@@ -324,7 +409,7 @@ exports.getBookingById = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay chi tiet booking.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy chi tiết booking.', error: error.message });
   }
 };
 
@@ -335,7 +420,7 @@ exports.updateBookingStatus = async (req, res) => {
   const { status } = req.body;
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    return res.status(400).json({ message: 'Ma booking khong hop le.' });
+    return res.status(400).json({ message: 'Mã booking không hợp lệ.' });
   }
 
   const allowedStatuses = [
@@ -350,7 +435,7 @@ exports.updateBookingStatus = async (req, res) => {
   ];
   if (!status || !allowedStatuses.includes(String(status).toUpperCase())) {
     return res.status(400).json({
-      message: `Trang thai khong hop le. Cho phep: ${allowedStatuses.join(', ')}`,
+      message: `Trạng thái không hợp lệ. Cho phép: ${allowedStatuses.join(', ')}`,
     });
   }
 
@@ -358,7 +443,7 @@ exports.updateBookingStatus = async (req, res) => {
     const [rows] = await db.query('SELECT id FROM bookings WHERE id = ? LIMIT 1', [bookingId]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
     }
 
     await db.query(
@@ -366,8 +451,8 @@ exports.updateBookingStatus = async (req, res) => {
       [status.toUpperCase(), status.toUpperCase(), bookingId],
     );
 
-    return res.status(200).json({ message: 'Cap nhat trang thai booking thanh cong.' });
+    return res.status(200).json({ message: 'Cập nhật trạng thái booking thành công.' });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the cap nhat trang thai.', error: error.message });
+    return res.status(500).json({ message: 'Không thể cập nhật trạng thái.', error: error.message });
   }
 };

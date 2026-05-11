@@ -5,6 +5,7 @@ const {
   getMyBookings,
   getMyBookingById,
   cancelMyBooking,
+  completeMyBooking,
   getAllBookings,
   getBookingById,
   updateBookingStatus,
@@ -19,6 +20,7 @@ router.post('/', authenticateToken, createBooking);
 router.get('/my', authenticateToken, getMyBookings);
 router.get('/my/:id', authenticateToken, getMyBookingById);
 router.put('/my/:id/cancel', authenticateToken, cancelMyBooking);
+router.put('/my/:id/complete', authenticateToken, completeMyBooking);
 
 // ---- ADMIN ROUTES ----
 router.get('/', authenticateAdminToken, getAllBookings);

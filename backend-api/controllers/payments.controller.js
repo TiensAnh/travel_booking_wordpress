@@ -16,18 +16,18 @@ function normalizeMethod(method = '') {
 
 function buildPendingPaymentMessage(method) {
   if (method === 'BANK_TRANSFER') {
-    return 'Da tao yeu cau chuyen khoan. Vui long chuyen tien va cho admin xac nhan.';
+    return 'Đã tạo yêu cầu chuyển khoản. Vui lòng chuyển tiền và chờ admin xác nhận.';
   }
 
   if (method === 'CASH') {
-    return 'Da ghi nhan yeu cau thanh toan tien mat. Booking se duoc xac nhan sau khi admin kiem tra.';
+    return 'Đã ghi nhận yêu cầu thanh toán tiền mặt. Booking sẽ được xác nhận sau khi admin kiểm tra.';
   }
 
   if (method === 'MOMO' || method === 'VNPAY' || method === 'ZALOPAY' || method === 'CARD') {
-    return 'Da tao yeu cau thanh toan. Hien he thong dang cho admin xac nhan giao dich.';
+    return 'Đã tạo yêu cầu thanh toán. Hiện hệ thống đang chờ admin xác nhận giao dịch.';
   }
 
-  return 'Da tao yeu cau thanh toan thanh cong.';
+  return 'Đã tạo yêu cầu thanh toán thành công.';
 }
 
 // POST /api/payments
@@ -38,12 +38,12 @@ exports.createPayment = async (req, res) => {
   const normalizedMethod = normalizeMethod(method);
 
   if (!booking_id || !method) {
-    return res.status(400).json({ message: 'Vui long cung cap booking_id va method.' });
+    return res.status(400).json({ message: 'Vui lòng cung cấp booking_id và method.' });
   }
 
   if (!ALLOWED_METHODS.includes(normalizedMethod)) {
     return res.status(400).json({
-      message: `Phuong thuc thanh toan khong hop le. Cho phep: ${ALLOWED_METHODS.join(', ')}`,
+      message: `Phương thức thanh toán không hợp lệ. Cho phép: ${ALLOWED_METHODS.join(', ')}`,
     });
   }
 
@@ -55,27 +55,27 @@ exports.createPayment = async (req, res) => {
     );
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
     }
 
     const booking = bookings[0];
 
     if (booking.status === BOOKING_STATUSES.CANCELLED || booking.status === BOOKING_STATUSES.REFUNDED) {
-      return res.status(400).json({ message: 'Booking nay da bi huy, khong the thanh toan.' });
+      return res.status(400).json({ message: 'Booking này đã bị hủy, không thể thanh toán.' });
     }
 
     if (booking.status === BOOKING_STATUSES.COMPLETED) {
       return res.status(400).json({ message: 'Booking nay da hoan thanh.' });
     }
 
-    // Khong cho tao giao dich moi neu booking da thanh toan xong
+    // Không cho tạo giao dịch mới nếu booking đã thanh toán xong
     const [successfulPayments] = await db.query(
       "SELECT id FROM payments WHERE booking_id = ? AND status = 'SUCCESS' LIMIT 1",
       [booking_id],
     );
 
     if (successfulPayments.length > 0) {
-      return res.status(400).json({ message: 'Booking nay da duoc thanh toan thanh cong roi.' });
+      return res.status(400).json({ message: 'Booking này đã được thanh toán thành công rồi.' });
     }
 
     const [pendingPayments] = await db.query(
@@ -85,7 +85,7 @@ exports.createPayment = async (req, res) => {
 
     if (pendingPayments.length > 0) {
       return res.status(409).json({
-        message: 'Booking nay da co yeu cau thanh toan dang cho xac nhan.',
+        message: 'Booking này đã có yêu cầu thanh toán đang chờ xác nhận.',
         payment: pendingPayments[0],
       });
     }
@@ -120,17 +120,17 @@ exports.createPayment = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the xu ly thanh toan luc nay.', error: error.message });
+    return res.status(500).json({ message: 'Không thể xử lý thanh toán lúc này.', error: error.message });
   }
 };
 
 // PUT /api/payments/:id/confirm
-// Admin xac nhan da nhan tien cho giao dich cho xu ly
+// Admin xác nhận đã nhận tiền cho giao dịch chờ xử lý
 exports.confirmPayment = async (req, res) => {
   const paymentId = Number(req.params.id);
 
   if (!Number.isInteger(paymentId) || paymentId <= 0) {
-    return res.status(400).json({ message: 'Ma giao dich khong hop le.' });
+    return res.status(400).json({ message: 'Mã giao dịch không hợp lệ.' });
   }
 
   try {
@@ -144,21 +144,21 @@ exports.confirmPayment = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay giao dich.' });
+      return res.status(404).json({ message: 'Không tìm thấy giao dịch.' });
     }
 
     const payment = rows[0];
 
     if (payment.status === PAYMENT_RECORD_STATUSES.SUCCESS) {
-      return res.status(400).json({ message: 'Giao dich nay da duoc xac nhan truoc do.' });
+      return res.status(400).json({ message: 'Giao dịch này đã được xác nhận trước đó.' });
     }
 
     if (payment.status !== PAYMENT_RECORD_STATUSES.PENDING) {
-      return res.status(400).json({ message: 'Chi co the xac nhan giao dich dang cho xu ly.' });
+      return res.status(400).json({ message: 'Chỉ có thể xác nhận giao dịch đang chờ xử lý.' });
     }
 
     if (payment.booking_status === BOOKING_STATUSES.CANCELLED) {
-      return res.status(400).json({ message: 'Booking da bi huy, khong the xac nhan thanh toan.' });
+      return res.status(400).json({ message: 'Booking đã bị hủy, không thể xác nhận thanh toán.' });
     }
 
     const paidAt = new Date();
@@ -185,7 +185,7 @@ exports.confirmPayment = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Xac nhan thanh toan thanh cong.',
+      message: 'Xac nhan thanh toan thành công.',
       payment: {
         id: payment.id,
         booking_id: payment.booking_id,
@@ -196,7 +196,7 @@ exports.confirmPayment = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the xac nhan giao dich luc nay.', error: error.message });
+    return res.status(500).json({ message: 'Không thể xác nhận giao dịch lúc này.', error: error.message });
   }
 };
 
@@ -207,7 +207,7 @@ exports.getPaymentsByBookingId = async (req, res) => {
   const bookingId = Number(req.params.bookingId);
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    return res.status(400).json({ message: 'Ma booking khong hop le.' });
+    return res.status(400).json({ message: 'Mã booking không hợp lệ.' });
   }
 
   try {
@@ -218,7 +218,7 @@ exports.getPaymentsByBookingId = async (req, res) => {
     );
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: 'Khong tim thay booking.' });
+      return res.status(404).json({ message: 'Không tìm thấy booking.' });
     }
 
     const [rows] = await db.query(
@@ -227,16 +227,16 @@ exports.getPaymentsByBookingId = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay lich su thanh toan thanh cong.',
+      message: 'Lấy lịch sử thanh toán thành công.',
       payments: rows,
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Khong the lay lich su thanh toan.', error: error.message });
+    return res.status(500).json({ message: 'Không thể lấy lịch sử thanh toán.', error: error.message });
   }
 };
 
 // GET /api/payments
-// Admin xem danh sach tat ca giao dich
+// Admin xem danh sách tất cả giao dịch
 exports.getAllPayments = async (req, res) => {
   const { status, method } = req.query;
 
@@ -271,13 +271,13 @@ exports.getAllPayments = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: 'Lay danh sach giao dich thanh cong.',
+      message: 'Lấy danh sách giao dịch thành công.',
       total: rows.length,
       payments: rows,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the lay danh sach giao dich.',
+      message: 'Không thể lấy danh sách giao dịch.',
       error: error.message,
     });
   }

@@ -44,25 +44,25 @@ exports.registerAdmin = async (req, res) => {
   const validationErrors = {};
 
   if (!name) {
-    validationErrors.name = 'Vui long nhap ten admin.';
+    validationErrors.name = 'Vui lòng nhập tên admin.';
   }
 
   if (!email) {
-    validationErrors.email = 'Vui long nhap email admin.';
+    validationErrors.email = 'Vui lòng nhập email admin.';
   } else if (!EMAIL_REGEX.test(email)) {
-    validationErrors.email = 'Email admin khong dung dinh dang.';
+    validationErrors.email = 'Email admin không đúng định dạng.';
   }
 
   if (!password) {
-    validationErrors.password = 'Vui long nhap mat khau.';
+    validationErrors.password = 'Vui lòng nhập mật khẩu.';
   } else if (password.length < 6) {
-    validationErrors.password = 'Mat khau phai co it nhat 6 ky tu.';
+    validationErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự.';
   }
 
   if (!confirmPassword) {
-    validationErrors.confirmPassword = 'Vui long nhap lai mat khau.';
+    validationErrors.confirmPassword = 'Vui lòng nhập lại mật khẩu.';
   } else if (password !== confirmPassword) {
-    validationErrors.confirmPassword = 'Mat khau xac nhan chua khop.';
+    validationErrors.confirmPassword = 'Mật khẩu xác nhận chưa khớp.';
   }
 
   if (Object.keys(validationErrors).length > 0) {
@@ -83,7 +83,7 @@ exports.registerAdmin = async (req, res) => {
 
     if (Object.keys(validationErrors).length > 0) {
       return res.status(409).json({
-        message: 'Thong tin admin bi trung.',
+        message: 'Thông tin admin bị trùng.',
         errors: validationErrors,
       });
     }
@@ -102,13 +102,13 @@ exports.registerAdmin = async (req, res) => {
     };
 
     return res.status(201).json({
-      message: 'Dang ky admin thanh cong.',
+      message: 'Đăng ký admin thành công.',
       token: buildAdminToken(admin),
       admin: sanitizeAdmin(admin),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the tao tai khoan admin luc nay.',
+      message: 'Không thể tạo tài khoản admin lúc này.',
       error: error.message,
     });
   }
@@ -120,13 +120,13 @@ exports.loginAdmin = async (req, res) => {
 
   if (!email || !password) {
     return res.status(400).json({
-      message: 'Email va mat khau admin khong duoc de trong.',
+      message: 'Email và mật khẩu admin không được để trống.',
     });
   }
 
   if (!EMAIL_REGEX.test(email)) {
     return res.status(400).json({
-      message: 'Email admin khong dung dinh dang.',
+      message: 'Email admin không đúng định dạng.',
     });
   }
 
@@ -135,7 +135,7 @@ exports.loginAdmin = async (req, res) => {
 
     if (admins.length === 0) {
       return res.status(401).json({
-        message: 'Tai khoan admin hoac mat khau khong chinh xac.',
+        message: 'Tài khoản admin hoặc mật khẩu không chính xác.',
       });
     }
 
@@ -146,7 +146,7 @@ exports.loginAdmin = async (req, res) => {
 
     if (!passwordMatches) {
       return res.status(401).json({
-        message: 'Tai khoan admin hoac mat khau khong chinh xac.',
+        message: 'Tài khoản admin hoặc mật khẩu không chính xác.',
       });
     }
 
@@ -156,13 +156,13 @@ exports.loginAdmin = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'Dang nhap admin thanh cong.',
+      message: 'Đăng nhập admin thành công.',
       token: buildAdminToken(admin),
       admin: sanitizeAdmin(admin),
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Khong the dang nhap admin luc nay.',
+      message: 'Không thể đăng nhập admin lúc này.',
       error: error.message,
     });
   }
@@ -170,7 +170,7 @@ exports.loginAdmin = async (req, res) => {
 
 exports.getAdminMe = async (req, res) => {
   return res.status(200).json({
-    message: 'Lay thong tin admin thanh cong.',
+    message: 'Lấy thông tin admin thành công.',
     admin: req.admin,
   });
 };
