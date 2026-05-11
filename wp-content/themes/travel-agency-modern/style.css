@@ -8101,3 +8101,195 @@ body.travel-agency-modern .tam-account-page .tam-account-detail {
     top: auto;
   }
 }
+body.travel-agency-modern .tam-tour-detail__departure-field {
+  position: relative;
+  gap: 12px;
+}
+
+body.travel-agency-modern .tam-tour-detail__departure-field .tam-tour-detail__date-input {
+  cursor: pointer;
+  color-scheme: light;
+}
+
+body.travel-agency-modern .tam-tour-detail__departure-field .tam-tour-detail__date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-hint {
+  margin-top: -4px;
+  color: var(--tam-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-suggestions {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-suggestions-label {
+  color: var(--tam-heading);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-options {
+  display: grid;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-options--suggestions {
+  max-height: 280px;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 78px;
+  padding: 12px 40px 12px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--tam-heading);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.46);
+  transform: translateY(-50%);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option:hover,
+body.travel-agency-modern .tam-tour-detail__date-option:focus-visible,
+body.travel-agency-modern .tam-tour-detail__date-option.is-selected {
+  border-color: rgba(14, 165, 233, 0.5);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(249, 115, 22, 0.08));
+  box-shadow: 0 16px 30px rgba(14, 165, 233, 0.12);
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option:hover {
+  transform: translateY(-1px);
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.14), 0 16px 30px rgba(14, 165, 233, 0.12);
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option.is-selected::after {
+  border-color: #0ea5e9;
+  background: #0ea5e9;
+  box-shadow: 0 0 0 5px rgba(14, 165, 233, 0.14);
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option .tam-tour-detail__date-calendar,
+body.travel-agency-modern .tam-tour-detail__date-option .tam-tour-detail__date-copy {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-calendar {
+  flex: 0 0 62px;
+  display: grid;
+  place-items: center;
+  min-height: 62px;
+  border-radius: 16px;
+  background: #eff6ff;
+  color: #0369a1;
+  border: 1px solid rgba(14, 165, 233, 0.16);
+}
+
+body.travel-agency-modern .tam-tour-detail__date-calendar strong,
+body.travel-agency-modern .tam-tour-detail__date-calendar small,
+body.travel-agency-modern .tam-tour-detail__date-copy strong,
+body.travel-agency-modern .tam-tour-detail__date-copy small {
+  display: block;
+  line-height: 1.15;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-calendar strong {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-calendar small {
+  color: #0284c7;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-copy strong {
+  color: var(--tam-heading);
+  font-size: 0.98rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-copy small {
+  color: var(--tam-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-empty {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(249, 115, 22, 0.18);
+  background: rgba(255, 247, 237, 0.92);
+  color: #9a3412;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  body.travel-agency-modern .tam-tour-detail__date-options--suggestions {
+  max-height: 280px;
+}
+
+body.travel-agency-modern .tam-tour-detail__date-option {
+    align-items: flex-start;
+    min-height: 72px;
+    padding: 10px 34px 10px 10px;
+    border-radius: 16px;
+  }
+
+  body.travel-agency-modern .tam-tour-detail__date-calendar {
+    flex-basis: 56px;
+    min-height: 56px;
+    border-radius: 14px;
+  }
+
+  body.travel-agency-modern .tam-tour-detail__date-calendar strong {
+    font-size: 1.25rem;
+  }
+}

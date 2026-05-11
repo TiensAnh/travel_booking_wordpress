@@ -526,6 +526,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const bookingPeopleField = bookingBox.querySelector("[data-booking-people]");
     const bookingTotal = bookingBox.querySelector("[data-booking-total]");
     const bookingSubmit = bookingBox.querySelector("[data-booking-submit]");
+    const departureOptionButtons = Array.from(bookingBox.querySelectorAll("[data-departure-option]"));
     const bookingSummary = document.querySelector("[data-booking-summary]");
     const inquiryMessage = document.querySelector("[data-tour-inquiry-message]");
     const inquiryDate = document.querySelector("[data-tour-inquiry-date]");
@@ -545,10 +546,64 @@ document.addEventListener("DOMContentLoaded", function () {
       return new Intl.NumberFormat("vi-VN").format(value) + "d";
     };
 
+    const formatTravelDate = function (value) {
+      if (!value) {
+        return "";
+      }
+
+      const parts = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+      if (!parts) {
+        return value;
+      }
+
+      return parts[3] + "/" + parts[2] + "/" + parts[1];
+    };
+
+    const getBookingDateLabel = function () {
+      if (!bookingDateField || !bookingDateField.value) {
+        return "";
+      }
+
+      if (bookingDateField.options) {
+        const selectedOption = bookingDateField.options[bookingDateField.selectedIndex];
+        return selectedOption ? selectedOption.text : bookingDateField.value;
+      }
+
+      const matchedButton = departureOptionButtons.find(function (button) {
+        return button.getAttribute("data-value") === bookingDateField.value;
+      });
+
+      if (matchedButton) {
+        const buttonLabel = matchedButton.getAttribute("data-label") || "";
+
+        if (buttonLabel) {
+          return buttonLabel;
+        }
+      }
+
+      return formatTravelDate(bookingDateField.value);
+    };
+
+    const syncDepartureOptions = function () {
+      if (!bookingDateField || !departureOptionButtons.length) {
+        return;
+      }
+
+      const currentValue = bookingDateField.value || "";
+
+      departureOptionButtons.forEach(function (button) {
+        const isSelected = button.getAttribute("data-value") === currentValue;
+        button.classList.toggle("is-selected", isSelected);
+        button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      });
+    };
+
     const syncBookingState = function () {
       const people = Math.max(parseInt((bookingPeopleField && bookingPeopleField.value) || "1", 10) || 1, 1);
-      const selectedOption = bookingDateField && bookingDateField.options ? bookingDateField.options[bookingDateField.selectedIndex] : null;
-      const dateLabel = selectedOption ? selectedOption.text : bookingDateField ? bookingDateField.value : "";
+      const dateLabel = getBookingDateLabel();
+
+      syncDepartureOptions();
 
       if (bookingTotal) {
         bookingTotal.textContent = formatPrice(basePrice > 0 ? basePrice * people : 0);
@@ -569,6 +624,22 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     };
 
+    if (departureOptionButtons.length && bookingDateField) {
+      departureOptionButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+          const nextValue = button.getAttribute("data-value") || "";
+
+          if (!nextValue || bookingDateField.value === nextValue) {
+            syncDepartureOptions();
+            return;
+          }
+
+          bookingDateField.value = nextValue;
+          bookingDateField.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+      });
+    }
+
     if (bookingDateField) {
       bookingDateField.addEventListener("change", syncBookingState);
     }
@@ -585,7 +656,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (checkoutUrl && tourId) {
           if (!bookingDateField || !bookingDateField.value) {
             if (bookingSummary) {
-              bookingSummary.textContent = "Tour nay chua co ngay khoi hanh de dat.";
+              bookingSummary.textContent = "Vui l\u00f2ng ch\u1ecdn ng\u00e0y kh\u1edfi h\u00e0nh tr\u01b0\u1edbc khi \u0111\u1eb7t tour.";
             }
             return;
           }
@@ -615,8 +686,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (inquiryMessage && !inquiryMessage.value.trim()) {
           const people = Math.max(parseInt((bookingPeopleField && bookingPeopleField.value) || "1", 10) || 1, 1);
-          const selectedOption = bookingDateField && bookingDateField.options ? bookingDateField.options[bookingDateField.selectedIndex] : null;
-          const dateLabel = selectedOption ? selectedOption.text : bookingDateField ? bookingDateField.value : "";
+          const dateLabel = getBookingDateLabel();
 
           inquiryMessage.value = dateLabel
             ? "T\u00f4i mu\u1ed1n \u0111\u1eb7t tour " + tourTitle + " v\u00e0o " + dateLabel + " cho " + people + " kh\u00e1ch. Nh\u1edd ADN Travel t\u01b0 v\u1ea5n v\u00e0 gi\u1eef ch\u1ed7 gi\u00fap t\u00f4i."

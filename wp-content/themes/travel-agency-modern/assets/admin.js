@@ -227,6 +227,167 @@
     });
   }
 
+  function setupItineraryBuilder() {
+    const builders = Array.from(document.querySelectorAll("[data-tam-itinerary-builder]"));
+
+    if (!builders.length) {
+      return;
+    }
+
+    function cleanValue(value) {
+      return String(value || "").replace(/\|/g, " ").trim();
+    }
+
+    function getItemValues(item) {
+      const label = item.querySelector("[data-tam-itinerary-label]");
+      const title = item.querySelector("[data-tam-itinerary-title]");
+      const description = item.querySelector("[data-tam-itinerary-description]");
+
+      return {
+        label: label instanceof HTMLInputElement ? cleanValue(label.value) : "",
+        title: title instanceof HTMLInputElement ? cleanValue(title.value) : "",
+        description: description instanceof HTMLTextAreaElement ? cleanValue(description.value) : "",
+      };
+    }
+
+    function syncOutput(builder) {
+      const output = builder.querySelector("[data-tam-itinerary-output]");
+      const items = Array.from(builder.querySelectorAll("[data-tam-itinerary-item]"));
+
+      if (!(output instanceof HTMLTextAreaElement)) {
+        return;
+      }
+
+      output.value = items
+        .map((item, index) => {
+          const values = getItemValues(item);
+
+          const isDefaultDayLabel = /^(ngày|ngay|day)\s*\d+$/i.test(values.label);
+
+          if (!values.title && !values.description && (!values.label || isDefaultDayLabel)) {
+            return "";
+          }
+
+          return [values.label || `Ngày ${index + 1}`, values.title, values.description].join(" | ");
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    function updateIndexes(builder) {
+      const items = Array.from(builder.querySelectorAll("[data-tam-itinerary-item]"));
+
+      items.forEach((item, index) => {
+        const dayNumber = index + 1;
+        const badge = item.querySelector("[data-tam-itinerary-badge]");
+        const label = item.querySelector("[data-tam-itinerary-label]");
+        const title = item.querySelector("[data-tam-itinerary-title]");
+        const description = item.querySelector("[data-tam-itinerary-description]");
+
+        if (badge) {
+          badge.textContent = `NGÀY ${dayNumber}`;
+        }
+
+        if (label instanceof HTMLInputElement) {
+          label.placeholder = `Ngày ${dayNumber}`;
+
+        }
+
+        if (title instanceof HTMLInputElement) {
+          title.placeholder = `Tiêu đề ngày ${dayNumber}`;
+        }
+
+        if (description instanceof HTMLTextAreaElement) {
+          description.placeholder = `Mô tả nhịp trải nghiệm ngày ${dayNumber}`;
+        }
+      });
+    }
+
+    function createItem(builder) {
+      const list = builder.querySelector("[data-tam-itinerary-list]");
+
+      if (!list) {
+        return null;
+      }
+
+      const dayNumber = list.querySelectorAll("[data-tam-itinerary-item]").length + 1;
+      const item = document.createElement("article");
+      item.className = "tam-admin-itinerary__item";
+      item.setAttribute("data-tam-itinerary-item", "");
+      item.innerHTML = `
+        <div class="tam-admin-itinerary__badge" data-tam-itinerary-badge>NGÀY ${dayNumber}</div>
+        <div class="tam-admin-itinerary__card">
+          <div class="tam-admin-itinerary__card-head">
+            <input class="tam-admin-itinerary__title" type="text" value="" placeholder="Tiêu đề ngày ${dayNumber}" data-tam-itinerary-title />
+            <button type="button" class="tam-admin-itinerary__remove" data-tam-itinerary-remove>Xóa</button>
+          </div>
+          <input class="tam-admin-itinerary__label" type="text" value="" placeholder="Ngày ${dayNumber}" data-tam-itinerary-label />
+          <textarea class="tam-admin-itinerary__description" rows="4" placeholder="Mô tả nhịp trải nghiệm ngày ${dayNumber}" data-tam-itinerary-description></textarea>
+        </div>
+      `;
+
+      list.appendChild(item);
+      updateIndexes(builder);
+      syncOutput(builder);
+
+      const title = item.querySelector("[data-tam-itinerary-title]");
+
+      if (title instanceof HTMLInputElement) {
+        title.focus();
+      }
+
+      return item;
+    }
+
+    builders.forEach((builder) => {
+      const addButton = builder.querySelector("[data-tam-itinerary-add]");
+
+      updateIndexes(builder);
+      syncOutput(builder);
+
+      if (addButton) {
+        addButton.addEventListener("click", () => {
+          createItem(builder);
+        });
+      }
+
+      builder.addEventListener("input", (event) => {
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+          syncOutput(builder);
+        }
+      });
+
+      builder.addEventListener("click", (event) => {
+        const removeButton = event.target instanceof Element ? event.target.closest("[data-tam-itinerary-remove]") : null;
+
+        if (!removeButton) {
+          return;
+        }
+
+        const item = removeButton.closest("[data-tam-itinerary-item]");
+        const list = builder.querySelector("[data-tam-itinerary-list]");
+
+        if (!item || !list) {
+          return;
+        }
+
+        item.remove();
+
+        if (!list.querySelector("[data-tam-itinerary-item]")) {
+          createItem(builder);
+        }
+
+        updateIndexes(builder);
+        syncOutput(builder);
+      });
+
+      const form = builder.closest("form");
+
+      if (form) {
+        form.addEventListener("submit", () => syncOutput(builder));
+      }
+    });
+  }
   document.addEventListener("submit", (event) => {
     const form = event.target;
 
@@ -249,8 +410,9 @@
   });
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupTourImagePreview, { once: true });
+    document.addEventListener("DOMContentLoaded", () => { setupTourImagePreview(); setupItineraryBuilder(); }, { once: true });
   } else {
     setupTourImagePreview();
+    setupItineraryBuilder();
   }
 })();

@@ -245,12 +245,41 @@ function normalizeHighlights(value) {
 function normalizeItinerary(body = {}) {
   if (Array.isArray(body.itinerary)) {
     return body.itinerary
-      .map((item, index) => ({
-        label: normalizeText(item?.label) || `Ngay ${index + 1}`,
-        title: normalizeText(item?.title) || `Lich trinh ${index + 1}`,
-        description: normalizeText(item?.description),
-      }))
-      .filter((item) => item.description);
+      .map((item, index) => {
+        let label = normalizeText(item?.label);
+        let title = normalizeText(item?.title);
+        let description = normalizeText(item?.description);
+
+        if (!title && !description && label) {
+          description = label;
+          const matchedDay = label.match(/^(ngày|ngay|day)\s*([0-9]+)\s*[:\-–]\s*(.+)$/iu);
+
+          if (matchedDay) {
+            label = `Ngay ${matchedDay[2]}`;
+            title = normalizeText(matchedDay[3]);
+            description = title;
+          }
+        } else if (title && !description) {
+          description = title;
+        }
+
+        if (!label) {
+          label = `Ngay ${index + 1}`;
+        }
+
+        if (!title) {
+          title = `Lich trinh ${index + 1}`;
+        }
+
+        return description
+          ? {
+            label,
+            title,
+            description,
+          }
+          : null;
+      })
+      .filter(Boolean);
   }
 
   const fallbackItems = [body.dayOne, body.dayTwo, body.dayThree]
@@ -515,9 +544,6 @@ function buildWritePayload(body = {}, adminId = null) {
     validationErrors.price = 'Gia tour phai la so hop le.';
   }
 
-  if (!imageUrl) {
-    validationErrors.imageUrl = 'Vui long chon anh chinh cho tour.';
-  }
 
   return {
     data: {

@@ -1286,17 +1286,6 @@ exports.renderMockGateway = async (req, res) => {
     }
 
     const method = PAYMENT_METHODS[summary.transaction.provider] || PAYMENT_METHODS.VNPAY;
-    const callbackActionUrl = buildGatewayCallbackActionUrl(req, transactionCode);
-    const successCallbackPayload = buildGatewayCallbackPayload(
-      transactionCode,
-      summary.transaction.checkoutToken,
-      'success',
-    );
-    const failedCallbackPayload = buildGatewayCallbackPayload(
-      transactionCode,
-      summary.transaction.checkoutToken,
-      'failed',
-    );
     const successCallbackUrl = buildGatewayCallbackUrl(
       req,
       transactionCode,
@@ -1492,18 +1481,8 @@ exports.renderMockGateway = async (req, res) => {
       </div>
 
       <div class="actions">
-        <form class="gateway-form" method="post" action="${callbackActionUrl}">
-          <input type="hidden" name="token" value="${successCallbackPayload.token}" />
-          <input type="hidden" name="status" value="${successCallbackPayload.status}" />
-          <input type="hidden" name="signature" value="${successCallbackPayload.signature}" />
-          <button type="submit" class="btn-success">Thanh toan thanh cong</button>
-        </form>
-        <form class="gateway-form" method="post" action="${callbackActionUrl}">
-          <input type="hidden" name="token" value="${failedCallbackPayload.token}" />
-          <input type="hidden" name="status" value="${failedCallbackPayload.status}" />
-          <input type="hidden" name="signature" value="${failedCallbackPayload.signature}" />
-          <button type="submit" class="btn-fail">Mo phong that bai</button>
-        </form>
+        <a class="action-link btn-success" href="${successCallbackUrl}">Thanh toan thanh cong</a>
+        <a class="action-link btn-fail" href="${failedCallbackUrl}">Mo phong that bai</a>
       </div>
       <p class="note">Trong luc tich hop production, khu vuc nay se duoc thay bang redirect sang VNPay, MoMo, ZaloPay, chuyen khoan hoac cong the quoc te co credentials that.</p>
       <p class="note">Neu trinh duyet chan submit form, ban van co the dung callback thu cong: <a href="${successCallbackUrl}">Success URL</a> hoac <a href="${failedCallbackUrl}">Failed URL</a>.</p>

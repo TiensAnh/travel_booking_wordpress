@@ -1562,17 +1562,45 @@ function tam_get_tour_itinerary( $post_id, $tour_meta, $terms = array() ) {
 		return array();
 	}
 
-	return array_map(
-		static function ( $row, $index ) {
-			return array(
-				'label'       => $row[0] ? $row[0] : 'Day ' . ( $index + 1 ),
-				'title'       => $row[1] ? $row[1] : 'Itinerary ' . ( $index + 1 ),
-				'description' => $row[2],
-			);
-		},
-		$structured_rows,
-		array_keys( $structured_rows )
-	);
+	$items = array();
+
+	foreach ( $structured_rows as $index => $row ) {
+		$label       = isset( $row[0] ) ? trim( (string) $row[0] ) : '';
+		$title       = isset( $row[1] ) ? trim( (string) $row[1] ) : '';
+		$description = isset( $row[2] ) ? trim( (string) $row[2] ) : '';
+
+		if ( '' === $title && '' === $description && '' !== $label ) {
+			$description = $label;
+
+			if ( preg_match( '/^(ngày|ngay|day)\s*([0-9]+)\s*[:\-–]\s*(.+)$/iu', $label, $matches ) ) {
+				$label       = 'Ngày ' . $matches[2];
+				$title       = trim( (string) $matches[3] );
+				$description = $title;
+			}
+		} elseif ( '' !== $title && '' === $description ) {
+			$description = $title;
+		}
+
+		if ( '' === $label ) {
+			$label = 'Ngày ' . ( $index + 1 );
+		}
+
+		if ( '' === $title ) {
+			$title = 'Kế hoạch ' . $label;
+		}
+
+		if ( '' === $description ) {
+			continue;
+		}
+
+		$items[] = array(
+			'label'       => $label,
+			'title'       => $title,
+			'description' => $description,
+		);
+	}
+
+	return $items;
 }
 
 /**

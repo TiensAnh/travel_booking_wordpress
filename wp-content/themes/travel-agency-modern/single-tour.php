@@ -403,18 +403,39 @@ while ( have_posts() ) :
 							</div>
 
 							<form class="tam-tour-detail__booking-form" data-tour-booking-box data-tour-title="<?php echo esc_attr( get_the_title() ); ?>" data-tour-id="<?php echo esc_attr( get_the_ID() ); ?>" data-checkout-url="<?php echo esc_url( tam_get_page_url_by_path( 'thanh-toan', '/thanh-toan/' ) ); ?>" data-base-price="<?php echo esc_attr( $price_numeric ); ?>" data-authenticated="<?php echo ! empty( $api_user ) ? 'true' : 'false'; ?>">
-								<label class="tam-tour-detail__field">
+								<div class="tam-tour-detail__field tam-tour-detail__departure-field" data-departure-picker>
 									<span><?php esc_html_e( 'Chọn ngày khởi hành', 'travel-agency-modern' ); ?></span>
-									<select name="departure_date" data-booking-date <?php disabled( ! $has_departure_options ); ?>>
-										<?php if ( $has_departure_options ) : ?>
-											<?php foreach ( $departure_options as $option ) : ?>
-												<option value="<?php echo esc_attr( $option['value'] ); ?>"><?php echo esc_html( $option['label'] ); ?></option>
-											<?php endforeach; ?>
-										<?php else : ?>
-											<option value=""><?php esc_html_e( 'Chua co ngay khoi hanh', 'travel-agency-modern' ); ?></option>
-										<?php endif; ?>
-									</select>
-								</label>
+									<input class="tam-tour-detail__date-input" type="date" name="departure_date" data-booking-date min="<?php echo esc_attr( wp_date( 'Y-m-d' ) ); ?>" required aria-label="<?php esc_attr_e( 'Chọn ngày khởi hành', 'travel-agency-modern' ); ?>" />
+									<small class="tam-tour-detail__date-hint"><?php esc_html_e( 'Bạn có thể tự chọn ngày đi phù hợp với kế hoạch của mình.', 'travel-agency-modern' ); ?></small>
+
+									<?php if ( $has_departure_options ) : ?>
+										<div class="tam-tour-detail__date-suggestions">
+											<span class="tam-tour-detail__date-suggestions-label"><?php esc_html_e( 'Ngày gợi ý', 'travel-agency-modern' ); ?></span>
+											<div class="tam-tour-detail__date-options tam-tour-detail__date-options--suggestions" role="group" aria-label="<?php esc_attr_e( 'Danh sách ngày khởi hành gợi ý', 'travel-agency-modern' ); ?>">
+												<?php foreach ( $departure_options as $option ) : ?>
+													<?php
+													$departure_timestamp    = strtotime( $option['value'] );
+													$departure_day          = $departure_timestamp ? wp_date( 'd', $departure_timestamp ) : '';
+													$departure_month        = $departure_timestamp ? wp_date( 'm/Y', $departure_timestamp ) : '';
+													$departure_display_date = $departure_timestamp ? wp_date( 'd/m/Y', $departure_timestamp ) : $option['value'];
+													?>
+													<button type="button" class="tam-tour-detail__date-option" data-departure-option data-value="<?php echo esc_attr( $option['value'] ); ?>" data-label="<?php echo esc_attr( $option['label'] ); ?>" aria-pressed="false">
+														<?php if ( $departure_day ) : ?>
+															<span class="tam-tour-detail__date-calendar" aria-hidden="true">
+																<strong><?php echo esc_html( $departure_day ); ?></strong>
+																<small><?php echo esc_html( $departure_month ); ?></small>
+															</span>
+														<?php endif; ?>
+														<span class="tam-tour-detail__date-copy">
+															<strong><?php echo esc_html( $option['label'] ); ?></strong>
+															<small><?php echo esc_html( sprintf( __( 'Ngày đi: %s', 'travel-agency-modern' ), $departure_display_date ) ); ?></small>
+														</span>
+													</button>
+												<?php endforeach; ?>
+											</div>
+										</div>
+									<?php endif; ?>
+								</div>
 
 								<label class="tam-tour-detail__field">
 									<span><?php esc_html_e( 'Số lượng người', 'travel-agency-modern' ); ?></span>
@@ -442,7 +463,7 @@ while ( have_posts() ) :
 									<small><?php esc_html_e( 'Giá cuối cùng có thể thay đổi theo ngày khởi hành, loại phòng và số lượng khách thực tế.', 'travel-agency-modern' ); ?></small>
 								</div>
 
-								<button type="button" class="tam-button tam-button--accent tam-tour-detail__booking-button" data-booking-submit <?php disabled( ! $has_departure_options ); ?>>
+								<button type="button" class="tam-button tam-button--accent tam-tour-detail__booking-button" data-booking-submit>
 									<?php esc_html_e( 'Đặt ngay', 'travel-agency-modern' ); ?>
 								</button>
 

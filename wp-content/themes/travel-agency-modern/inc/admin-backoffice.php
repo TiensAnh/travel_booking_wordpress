@@ -691,7 +691,7 @@ function tam_backend_admin_get_tour_upload_slots() {
 		'image' => array(
 			'input_name' => 'tour_image',
 			'error_key'  => 'tour_image',
-			'label'      => __( 'Ảnh chính', 'travel-agency-modern' ),
+			'label'      => __( 'Ảnh tour', 'travel-agency-modern' ),
 			'index'      => 0,
 		),
 	);
@@ -700,7 +700,7 @@ function tam_backend_admin_get_tour_upload_slots() {
 		'image'         => array(
 			'input_name' => 'tour_image',
 			'error_key'  => 'tour_image_main',
-			'label'      => __( 'Ảnh chính', 'travel-agency-modern' ),
+			'label'      => __( 'Ảnh tour', 'travel-agency-modern' ),
 			'index'      => 0,
 		),
 		'galleryImage1' => array(
@@ -2622,23 +2622,23 @@ function tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id = 0
 
 	echo '<section class="' . esc_attr( $wrapper_class ) . '" data-tam-tour-image>';
 	echo '<div class="tam-admin-tour-image__head">';
-	echo '<span class="tam-admin-tour-image__eyebrow">' . esc_html__( 'Ảnh chính', 'travel-agency-modern' ) . '</span>';
-	echo '<h4>' . esc_html__( 'Ảnh cover dùng cho đầu trang chi tiết tour', 'travel-agency-modern' ) . '</h4>';
-	echo '<p>' . esc_html__( 'Form tour và trang chi tiết giờ dùng chung một ảnh chính. Ảnh này sẽ là ảnh hiển thị duy nhất ở phần đầu của tour.', 'travel-agency-modern' ) . '</p>';
+	echo '<span class="tam-admin-tour-image__eyebrow">' . esc_html__( 'Ảnh tour', 'travel-agency-modern' ) . '</span>';
+	echo '<h4>' . esc_html__( 'Thêm ảnh cho tour', 'travel-agency-modern' ) . '</h4>';
+	echo '<p>' . esc_html__( 'Chọn một ảnh đại diện cho tour. Có thể để trống nếu chưa có ảnh.', 'travel-agency-modern' ) . '</p>';
 	echo '</div>';
 	echo '<input type="hidden" name="tour[imageUrl]" value="' . esc_attr( $form['imageUrl'] ) . '" />';
 	echo '<div class="tam-admin-tour-image__layout">';
 	echo '<div class="tam-admin-tour-image__preview" data-tam-tour-image-frame>';
-	echo '<img class="tam-admin-tour-image__preview-image" data-tam-tour-image-preview src="' . esc_url( $current_image ) . '" alt="' . esc_attr__( 'Ảnh chính tour', 'travel-agency-modern' ) . '" data-existing-src="' . esc_attr( $current_image ) . '"' . ( $current_image ? '' : ' hidden' ) . ' />';
+	echo '<img class="tam-admin-tour-image__preview-image" data-tam-tour-image-preview src="' . esc_url( $current_image ) . '" alt="' . esc_attr__( 'Ảnh tour', 'travel-agency-modern' ) . '" data-existing-src="' . esc_attr( $current_image ) . '"' . ( $current_image ? '' : ' hidden' ) . ' />';
 	echo '<div class="tam-admin-tour-image__placeholder" data-tam-tour-image-placeholder' . ( $current_image ? ' hidden' : '' ) . '>';
 	echo '<span class="dashicons dashicons-format-image" aria-hidden="true"></span>';
-	echo '<strong>' . esc_html__( 'Chưa có ảnh chính', 'travel-agency-modern' ) . '</strong>';
-	echo '<p>' . esc_html__( 'Chọn một ảnh rõ, ngang và đủ lớn để dùng làm cover của trang chi tiết tour.', 'travel-agency-modern' ) . '</p>';
+	echo '<strong>' . esc_html__( 'Chưa có ảnh tour', 'travel-agency-modern' ) . '</strong>';
+	echo '<p>' . esc_html__( 'Chọn ảnh JPG, PNG hoặc WebP cho tour.', 'travel-agency-modern' ) . '</p>';
 	echo '</div>';
 	echo '</div>';
 	echo '<div class="tam-admin-tour-image__panel">';
 	echo '<label class="tam-admin-tour-image__picker" for="tam-tour-image-input">';
-	echo '<span>' . esc_html__( 'Tải ảnh chính', 'travel-agency-modern' ) . '</span>';
+	echo '<span>' . esc_html__( 'Tải ảnh tour', 'travel-agency-modern' ) . '</span>';
 	echo '<input id="tam-tour-image-input" class="' . esc_attr( $input_class ) . '" type="file" name="tour_image" accept=".jpg,.jpeg,.png,.webp" data-tam-tour-image-input />';
 	echo '</label>';
 
@@ -2649,13 +2649,14 @@ function tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id = 0
 	if ( '' !== $error_message ) {
 		echo '<small class="tam-admin-field__error">' . esc_html( $error_message ) . '</small>';
 	} else {
-		echo '<small>' . esc_html__( 'Nếu không đổi ảnh khi sửa tour, hệ thống sẽ giữ nguyên ảnh hiện tại.', 'travel-agency-modern' ) . '</small>';
+		echo '<small>' . esc_html__( 'Nếu không chọn ảnh mới khi sửa tour, hệ thống sẽ giữ nguyên ảnh hiện tại.', 'travel-agency-modern' ) . '</small>';
 	}
 
 	echo '</div>';
 	echo '</div>';
 	echo '</section>';
 
+	return;
 	$form          = wp_parse_args( is_array( $form ) ? $form : array(), tam_backend_admin_default_tour_form() );
 	$errors        = is_array( $errors ) ? $errors : array();
 	$gallery_images = tam_backend_admin_normalize_gallery_images(
@@ -2798,6 +2799,7 @@ function tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id = 0
 	echo '<input type="hidden" name="tour[curatorNote]" value="' . esc_attr( $form['curatorNote'] ) . '" />';
 	echo '<input type="hidden" name="tour[promise_text]" value="' . esc_attr( $form['promise_text'] ) . '" />';
 	echo '<input type="hidden" name="tour[overview_text]" value="' . esc_attr( $form['overview_text'] ) . '" />';
+	echo '<input type="hidden" name="tour[itinerary_text]" value="' . esc_attr( $form['itinerary_text'] ) . '" />';
 	tam_backend_admin_render_tour_image_field( $form, $errors, $tour_id );
 
 	echo '<section class="tam-admin-form-section">';
@@ -2820,7 +2822,6 @@ function tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id = 0
 	tam_backend_admin_render_field( 'season', __( 'Mùa đẹp', 'travel-agency-modern' ), $form['season'], array( 'placeholder' => __( 'Tháng 10 - 3', 'travel-agency-modern' ) ), $errors );
 	tam_backend_admin_render_field( 'maxPeople', __( 'Số khách tối đa', 'travel-agency-modern' ), $form['maxPeople'], array( 'type' => 'number', 'placeholder' => '18' ), $errors );
 	tam_backend_admin_render_field( 'departureSchedule', __( 'Lịch khởi hành tổng quát', 'travel-agency-modern' ), $form['departureSchedule'], array( 'placeholder' => __( 'Mỗi thứ Sáu hàng tuần', 'travel-agency-modern' ) ), $errors );
-	tam_backend_admin_render_field( 'departure_dates_text', __( 'Danh sách ngày khởi hành', 'travel-agency-modern' ), $form['departure_dates_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: YYYY-MM-DD | Nhãn hiển thị cho dropdown ngày đi.', 'travel-agency-modern' ), 'full' => true ), $errors );
 	echo '</div>';
 	echo '</section>';
 
@@ -2832,12 +2833,6 @@ function tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id = 0
 	echo '</div>';
 	echo '</section>';
 
-	echo '<section class="tam-admin-form-section">';
-	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Lịch trình', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Các chặng hiển thị theo từng ngày ở trang chi tiết', 'travel-agency-modern' ) . '</h4></div>';
-	echo '<div class="tam-admin-form-grid">';
-	tam_backend_admin_render_field( 'itinerary_text', __( 'Các chặng theo ngày', 'travel-agency-modern' ), $form['itinerary_text'], array( 'type' => 'textarea', 'rows' => 7, 'help' => __( 'Mỗi dòng: nhãn ngày | tiêu đề | mô tả', 'travel-agency-modern' ), 'full' => true ), $errors );
-	echo '</div>';
-	echo '</section>';
 
 	echo '<section class="tam-admin-form-section">';
 	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Dịch vụ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Những gì đã bao gồm và chưa bao gồm trong giá tour', 'travel-agency-modern' ) . '</h4></div>';
@@ -2902,7 +2897,6 @@ function tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id = 0
 	tam_backend_admin_render_field( 'maxPeople', __( 'Số khách tối đa', 'travel-agency-modern' ), $form['maxPeople'], array( 'type' => 'number', 'placeholder' => '18' ), $errors );
 	tam_backend_admin_render_field( 'departureSchedule', __( 'Lịch khởi hành tổng quát', 'travel-agency-modern' ), $form['departureSchedule'], array( 'placeholder' => __( 'Mỗi thứ Sáu hàng tuần', 'travel-agency-modern' ) ), $errors );
 	tam_backend_admin_render_field( 'featured', __( 'Tour nổi bật', 'travel-agency-modern' ), $form['featured'], array( 'type' => 'select', 'options' => array( '0' => __( 'Không', 'travel-agency-modern' ), '1' => __( 'Có', 'travel-agency-modern' ) ) ), $errors );
-	tam_backend_admin_render_field( 'departure_dates_text', __( 'Danh sách ngày khởi hành', 'travel-agency-modern' ), $form['departure_dates_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: YYYY-MM-DD | Nhãn hiển thị cho dropdown ngày đi.', 'travel-agency-modern' ), 'full' => true ), $errors );
 	echo '</div>';
 	echo '</section>';
 
@@ -2914,12 +2908,6 @@ function tam_backend_admin_render_tour_form_layout( $form, $errors, $tour_id = 0
 	echo '</div>';
 	echo '</section>';
 
-	echo '<section class="tam-admin-form-section">';
-	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Lịch trình', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Từng ngày của chuyến đi', 'travel-agency-modern' ) . '</h4></div>';
-	echo '<div class="tam-admin-form-grid">';
-	tam_backend_admin_render_field( 'itinerary_text', __( 'Các chặng theo ngày', 'travel-agency-modern' ), $form['itinerary_text'], array( 'type' => 'textarea', 'rows' => 7, 'help' => __( 'Mỗi dòng: nhãn ngày | tiêu đề | mô tả', 'travel-agency-modern' ), 'full' => true ), $errors );
-	echo '</div>';
-	echo '</section>';
 
 	echo '<section class="tam-admin-form-section">';
 	echo '<div class="tam-admin-form-section__head"><span class="tam-admin-form-section__eyebrow">' . esc_html__( 'Dịch vụ', 'travel-agency-modern' ) . '</span><h4>' . esc_html__( 'Những gì đã bao gồm và chưa bao gồm', 'travel-agency-modern' ) . '</h4></div>';
@@ -3210,7 +3198,6 @@ function tam_backend_admin_render_tour_form( $form, $errors, $tour_id = 0, $gene
 	tam_backend_admin_render_field( 'promise_text', __( 'Giá trị nhận được', 'travel-agency-modern' ), $form['promise_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng là một promise item.', 'travel-agency-modern' ), 'full' => true ), $errors );
 	tam_backend_admin_render_field( 'overview_text', __( 'Overview cards', 'travel-agency-modern' ), $form['overview_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: tiêu đề | mô tả | icon', 'travel-agency-modern' ), 'full' => true ), $errors );
 	tam_backend_admin_render_field( 'highlights_text', __( 'Highlights', 'travel-agency-modern' ), $form['highlights_text'], array( 'type' => 'textarea', 'rows' => 5, 'help' => __( 'Mỗi dòng: tiêu đề | mô tả | icon', 'travel-agency-modern' ), 'full' => true ), $errors );
-	tam_backend_admin_render_field( 'itinerary_text', __( 'Lịch trình', 'travel-agency-modern' ), $form['itinerary_text'], array( 'type' => 'textarea', 'rows' => 6, 'help' => __( 'Mỗi dòng: nhãn ngày | tiêu đề | mô tả', 'travel-agency-modern' ), 'full' => true ), $errors );
 	echo '<label class="tam-admin-field tam-admin-field--full"><span>' . esc_html__( 'Ảnh tour', 'travel-agency-modern' ) . '</span><input type="file" name="tour_image" accept=".jpg,.jpeg,.png,.webp" />';
 
 	if ( ! empty( $form['imageUrl'] ) ) {
