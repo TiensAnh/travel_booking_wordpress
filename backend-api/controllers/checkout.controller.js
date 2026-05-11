@@ -27,7 +27,7 @@ const PAYMENT_METHODS = {
 const TAX_RATE = 0.08;
 const SERVICE_FEE = 39000;
 const CHILD_PRICE_RATIO = 0.7;
-const CALLBACK_SECRET = process.env.CHECKOUT_SIGNATURE_SECRET || process.env.JWT_SECRET || 'checkout-secret';
+const CALLBACK_SECRET = process.env.CHECKOUT_SIGNATURE_SECRET || process.env.JWT_SECRET;
 const TERMINAL_TRANSACTION_STATUSES = new Set([
   PAYMENT_RECORD_STATUSES.FAILED,
   PAYMENT_RECORD_STATUSES.CANCELLED,
@@ -165,6 +165,10 @@ function buildRetryRequestId(requestId) {
 }
 
 function signGatewayPayload(transactionCode, status, checkoutToken) {
+  if (!CALLBACK_SECRET) {
+    throw new Error('Checkout callback secret is not configured.');
+  }
+
   return crypto
     .createHmac('sha256', CALLBACK_SECRET)
     .update(`${transactionCode}:${status}:${checkoutToken}`)
@@ -361,6 +365,17 @@ async function ensureCheckoutSchema() {
           WHEN p.status = 'REFUNDED' THEN 'REFUNDED'
           WHEN p.status IN ('FAILED', 'CANCELLED', 'EXPIRED') THEN 'FAILED'
           ELSE b.payment_status
+        END,
+        b.booking_status = CASE
+          WHEN p.status = 'SUCCESS'
+            AND COALESCE(NULLIF(b.booking_status, ''), b.status) IN ('PENDING', 'PENDING_PAYMENT', 'PAYMENT_FAILED') THEN
+              CASE
+                WHEN b.status IN ('CONFIRMED', 'COMPLETED', 'CANCELLED', 'REFUNDED') THEN b.status
+                ELSE 'PENDING_CONFIRMATION'
+              END
+          WHEN p.status IN ('FAILED', 'CANCELLED', 'EXPIRED')
+            AND COALESCE(NULLIF(b.booking_status, ''), b.status) IN ('PENDING', 'PENDING_PAYMENT', 'PENDING_CONFIRMATION') THEN 'PAYMENT_FAILED'
+          ELSE b.booking_status
         END,
         b.payment_plan = COALESCE(NULLIF(p.payment_plan, ''), b.payment_plan),
         b.paid_amount = CASE

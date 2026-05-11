@@ -10,7 +10,7 @@ const { authenticateAdminToken } = require('../middleware/adminAuth.middleware')
 const router = express.Router();
 
 router.post('/login', loginAdmin);
-router.post('/register', registerAdmin);
+router.post('/register', authenticateAdminToken, registerAdmin);
 router.get('/me', authenticateAdminToken, getAdminMe);
 
 module.exports = router;

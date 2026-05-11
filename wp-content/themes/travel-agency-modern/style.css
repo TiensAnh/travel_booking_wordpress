@@ -7509,6 +7509,16 @@ body.travel-agency-modern .tam-button--ghost:focus-visible {
   box-shadow: 0 12px 25px rgba(15, 143, 203, 0.08);
 }
 
+body.travel-agency-modern button.tam-button--ghost[type="submit"],
+body.travel-agency-modern button.tam-button--ghost[type="submit"]:hover,
+body.travel-agency-modern button.tam-button--ghost[type="submit"]:focus,
+body.travel-agency-modern button.tam-button--ghost[type="submit"]:focus-visible {
+  background: #fff;
+  border-color: rgba(15, 143, 203, 0.18);
+  color: var(--tam-primary-strong);
+  box-shadow: 0 12px 25px rgba(15, 143, 203, 0.08);
+}
+
 body.travel-agency-modern .tam-button--accent {
   background: linear-gradient(135deg, #f97316, #fb923c);
   box-shadow: 0 18px 30px rgba(249, 115, 22, 0.24);

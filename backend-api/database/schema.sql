@@ -60,7 +60,16 @@ CREATE TABLE bookings (
     travel_date DATE,
     number_of_people INT,
     total_price DECIMAL(10,2),
-    status VARCHAR(20) DEFAULT 'PENDING',
+    status VARCHAR(30) DEFAULT 'PENDING_PAYMENT',
+    booking_status VARCHAR(30) NOT NULL DEFAULT 'PENDING_PAYMENT',
+    payment_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    payment_plan VARCHAR(20) NOT NULL DEFAULT 'FULL',
+    confirmed_by VARCHAR(191) NULL,
+    confirmed_at DATETIME NULL,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    remaining_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    payment_receipt_sent_at DATETIME NULL,
+    confirmation_sent_at DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (tour_id) REFERENCES tours(id)
@@ -82,6 +91,12 @@ CREATE TABLE payments (
     amount DECIMAL(10,2),
     method VARCHAR(50),
     status VARCHAR(20) DEFAULT 'PENDING',
+    payment_plan VARCHAR(20) NOT NULL DEFAULT 'FULL',
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    remaining_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    refund_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    receipt_sent_at DATETIME NULL,
+    refunded_at DATETIME NULL,
     paid_at DATETIME NULL,
     FOREIGN KEY (booking_id) REFERENCES bookings(id)
 );
@@ -99,4 +114,58 @@ CREATE TABLE reviews (
     FOREIGN KEY (booking_id) REFERENCES bookings(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (tour_id) REFERENCES tours(id)
+);
+
+CREATE TABLE coupons (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    discount_type ENUM('PERCENT', 'FIXED') NOT NULL DEFAULT 'PERCENT',
+    discount_value DECIMAL(10,2) NOT NULL,
+    min_order_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    max_discount_amount DECIMAL(10,2) NULL,
+    status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+    description VARCHAR(255) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE payment_transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    payment_id INT NOT NULL UNIQUE,
+    booking_id INT NOT NULL,
+    request_id VARCHAR(100) NOT NULL UNIQUE,
+    provider VARCHAR(50) NOT NULL,
+    payment_plan VARCHAR(20) NOT NULL DEFAULT 'FULL',
+    transaction_code VARCHAR(100) NOT NULL UNIQUE,
+    checkout_token VARCHAR(120) NOT NULL,
+    coupon_code VARCHAR(50) NULL,
+    base_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    fee_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    remaining_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    return_url TEXT NULL,
+    gateway_reference VARCHAR(120) NULL,
+    gateway_payload_json TEXT NULL,
+    completed_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+);
+
+CREATE TABLE booking_audit_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    booking_id INT NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    actor_type VARCHAR(30) NOT NULL DEFAULT 'system',
+    actor_id VARCHAR(100) NULL,
+    actor_name VARCHAR(255) NULL,
+    note TEXT NULL,
+    payload_json TEXT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 );

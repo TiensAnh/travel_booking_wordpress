@@ -4,19 +4,19 @@
 
 -- ADMINS
 INSERT INTO admins (username, email, password, role) VALUES
-('ADN Super Admin', 'admin@adntravel.vn', 'admin123', 'admin'),
-('Operations Admin', 'ops@adntravel.vn', 'ops12345', 'admin');
+('ADN Super Admin', 'admin@adntravel.vn', '$2y$10$GUNe3V00b660g9qp7rs.bOoE9i2YYMauQHK8LVFg1/cQcGJV4GIke', 'admin'),
+('Operations Admin', 'ops@adntravel.vn', '$2y$10$EUSk4zUCNN3lPz.Y.g7s9.W2eIaMgJZQk.H/p8/50.kg/pFOAtkXu', 'admin');
 
 -- USERS
 INSERT INTO users (name, email, phone, password, role) VALUES
-('Dieu hanh vien',  'staff1@gmail.com',  '0900000001', '123456', 'STAFF'),
-('Nhan vien',       'staff@gmail.com',   '0900000002', '123456', 'STAFF'),
-('Nguyen Van A',    'user1@gmail.com',   '0900000003', '123456', 'USER'),
-('Tran Van B',      'user2@gmail.com',   '0900000004', '123456', 'USER'),
-('Le Thi C',        'user3@gmail.com',   '0900000005', '123456', 'USER'),
-('Pham Thi D',      'user4@gmail.com',   '0900000006', '123456', 'USER'),
-('Hoang Van E',     'user5@gmail.com',   '0900000007', '123456', 'USER'),
-('Vo Thi F',        'user6@gmail.com',   '0900000008', '123456', 'USER');
+('Dieu hanh vien',  'staff1@gmail.com',  '0900000001', '$2y$10$6AhqTu1LlFVaE4blMP/JeOZioBpkQ7Oo6RzAOc.5oHNhbERLSf0ai', 'STAFF'),
+('Nhan vien',       'staff@gmail.com',   '0900000002', '$2y$10$wuU77k50P0WrkBABdBiia.bABNH3SSM/BtElSPK6BmK5kjxjGafOG', 'STAFF'),
+('Nguyen Van A',    'user1@gmail.com',   '0900000003', '$2y$10$BqAMnB9YUUbOv673ZinoCucFTsoY6PgMGCosLlyUA/YCb/NrP/MaW', 'USER'),
+('Tran Van B',      'user2@gmail.com',   '0900000004', '$2y$10$OvDdYwi81alQgR.YmxeBZeaHhmlq/fNdoNSZb1AgalTlo08yhkZL.', 'USER'),
+('Le Thi C',        'user3@gmail.com',   '0900000005', '$2y$10$nEAgBZ.CD7eejEXPOuVXVuF66pZr/.dlc7V0SZlUxcjGlOujSFRZK', 'USER'),
+('Pham Thi D',      'user4@gmail.com',   '0900000006', '$2y$10$ES5Yf77RVS75Uv2p9GLapebmN5YyiElJ7sPuEDTZ8w5KsWHke5XGS', 'USER'),
+('Hoang Van E',     'user5@gmail.com',   '0900000007', '$2y$10$m1H5r3crWa2G5nJrrisq/.8IPhq3POLsp1l7.O9XteMdN7/.ve6vS', 'USER'),
+('Vo Thi F',        'user6@gmail.com',   '0900000008', '$2y$10$pp9n0tAAKOYAuLtd2P8O1.5JC.4wOBeX7IE5zp3P6NFgDmRR451yy', 'USER');
 
 -- TOURS (25 mẫu đa dạng)
 INSERT INTO tours (
@@ -259,17 +259,20 @@ INSERT INTO tours (
 );
 
 -- BOOKINGS (nhiều trạng thái để test)
-INSERT INTO bookings (user_id, tour_id, travel_date, number_of_people, total_price, status, created_at) VALUES
-(3, 1,  '2026-05-01', 2, 5000000,  'PENDING',   '2026-04-01 09:00:00'),
-(4, 2,  '2026-05-10', 3, 5400000,  'CONFIRMED', '2026-04-02 10:00:00'),
-(5, 3,  '2026-06-01', 2, 11000000, 'CONFIRMED', '2026-04-03 11:00:00'),
-(6, 5,  '2026-05-15', 4, 8800000,  'COMPLETED', '2026-04-04 09:00:00'),
-(7, 7,  '2026-07-01', 2, 9000000,  'PENDING',   '2026-04-05 10:00:00'),
-(8, 9,  '2026-06-20', 2, 13000000, 'CONFIRMED', '2026-04-06 11:00:00'),
-(3, 11, '2026-05-20', 3, 10500000, 'CANCELLED', '2026-04-07 09:00:00'),
-(4, 13, '2026-06-05', 2, 4600000,  'COMPLETED', '2026-04-08 10:00:00'),
-(5, 15, '2026-07-10', 2, 15000000, 'PENDING',   '2026-04-09 09:00:00'),
-(6, 17, '2026-05-25', 4, 4800000,  'CONFIRMED', '2026-04-10 11:00:00');
+INSERT INTO bookings (
+  user_id, tour_id, travel_date, number_of_people, total_price,
+  status, booking_status, payment_status, payment_plan, paid_amount, remaining_amount, confirmed_by, confirmed_at, created_at
+) VALUES
+(3, 1,  '2026-05-01', 2, 5000000,  'PENDING_PAYMENT', 'PENDING_PAYMENT', 'PENDING', 'FULL', 0, 5000000, NULL, NULL, '2026-04-01 09:00:00'),
+(4, 2,  '2026-05-10', 3, 5400000,  'CONFIRMED', 'CONFIRMED', 'PAID', 'FULL', 5400000, 0, 'seed', '2026-04-02 11:00:00', '2026-04-02 10:00:00'),
+(5, 3,  '2026-06-01', 2, 11000000, 'CONFIRMED', 'CONFIRMED', 'PAID', 'FULL', 11000000, 0, 'seed', '2026-04-03 12:00:00', '2026-04-03 11:00:00'),
+(6, 5,  '2026-05-15', 4, 8800000,  'COMPLETED', 'COMPLETED', 'PAID', 'FULL', 8800000, 0, 'seed', '2026-04-04 10:00:00', '2026-04-04 09:00:00'),
+(7, 7,  '2026-07-01', 2, 9000000,  'PENDING_PAYMENT', 'PENDING_PAYMENT', 'PENDING', 'FULL', 0, 9000000, NULL, NULL, '2026-04-05 10:00:00'),
+(8, 9,  '2026-06-20', 2, 13000000, 'CONFIRMED', 'CONFIRMED', 'PAID', 'FULL', 13000000, 0, 'seed', '2026-04-06 12:00:00', '2026-04-06 11:00:00'),
+(3, 11, '2026-05-20', 3, 10500000, 'CANCELLED', 'CANCELLED', 'PENDING', 'FULL', 0, 0, NULL, NULL, '2026-04-07 09:00:00'),
+(4, 13, '2026-06-05', 2, 4600000,  'COMPLETED', 'COMPLETED', 'PAID', 'FULL', 4600000, 0, 'seed', '2026-04-08 11:00:00', '2026-04-08 10:00:00'),
+(5, 15, '2026-07-10', 2, 15000000, 'PENDING_PAYMENT', 'PENDING_PAYMENT', 'PENDING', 'FULL', 0, 15000000, NULL, NULL, '2026-04-09 09:00:00'),
+(6, 17, '2026-05-25', 4, 4800000,  'CONFIRMED', 'CONFIRMED', 'PAID', 'FULL', 4800000, 0, 'seed', '2026-04-10 12:00:00', '2026-04-10 11:00:00');
 
 -- BOOKING CUSTOMERS
 INSERT INTO booking_customers (booking_id, full_name, gender, date_of_birth) VALUES
@@ -286,14 +289,14 @@ INSERT INTO booking_customers (booking_id, full_name, gender, date_of_birth) VAL
 (4, 'Le Van M',      'MALE',   '1988-09-18');
 
 -- PAYMENTS
-INSERT INTO payments (booking_id, amount, method, status, paid_at) VALUES
-(1, 5000000,  'MOMO',          'PENDING', NULL),
-(2, 5400000,  'VNPAY',         'SUCCESS', '2026-04-02 11:00:00'),
-(3, 11000000, 'BANK_TRANSFER', 'SUCCESS', '2026-04-03 12:00:00'),
-(4, 8800000,  'MOMO',          'SUCCESS', '2026-04-04 10:00:00'),
-(6, 13000000, 'VNPAY',         'SUCCESS', '2026-04-06 12:00:00'),
-(8, 4600000,  'CASH',          'SUCCESS', '2026-04-08 11:00:00'),
-(10, 4800000, 'BANK_TRANSFER', 'SUCCESS', '2026-04-10 12:00:00');
+INSERT INTO payments (booking_id, amount, method, status, payment_plan, paid_amount, remaining_amount, paid_at) VALUES
+(1, 5000000,  'MOMO',          'PENDING', 'FULL', 0, 5000000, NULL),
+(2, 5400000,  'VNPAY',         'SUCCESS', 'FULL', 5400000, 0, '2026-04-02 11:00:00'),
+(3, 11000000, 'BANK_TRANSFER', 'SUCCESS', 'FULL', 11000000, 0, '2026-04-03 12:00:00'),
+(4, 8800000,  'MOMO',          'SUCCESS', 'FULL', 8800000, 0, '2026-04-04 10:00:00'),
+(6, 13000000, 'VNPAY',         'SUCCESS', 'FULL', 13000000, 0, '2026-04-06 12:00:00'),
+(8, 4600000,  'CASH',          'SUCCESS', 'FULL', 4600000, 0, '2026-04-08 11:00:00'),
+(10, 4800000, 'BANK_TRANSFER', 'SUCCESS', 'FULL', 4800000, 0, '2026-04-10 12:00:00');
 
 -- REVIEWS
 INSERT INTO reviews (booking_id, user_id, tour_id, rating, comment, status, created_at, updated_at) VALUES

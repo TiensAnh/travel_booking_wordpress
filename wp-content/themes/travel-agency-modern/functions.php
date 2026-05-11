@@ -980,6 +980,62 @@ function tam_get_page_url_by_path( $path, $fallback = '/' ) {
 }
 
 /**
+ * Ensure frontend pages required by hard-coded theme links exist.
+ */
+function tam_ensure_required_pages() {
+	if ( wp_installing() ) {
+		return;
+	}
+
+	$required_pages = array(
+		array(
+			'title'    => __( 'Tài khoản', 'travel-agency-modern' ),
+			'slug'     => 'tai-khoan',
+			'template' => 'templates/template-account.php',
+		),
+	);
+
+	foreach ( $required_pages as $page_data ) {
+		$page    = get_page_by_path( $page_data['slug'] );
+		$page_id = 0;
+
+		if ( $page instanceof WP_Post ) {
+			$page_id = (int) $page->ID;
+
+			if ( 'publish' !== $page->post_status ) {
+				wp_update_post(
+					array(
+						'ID'          => $page_id,
+						'post_status' => 'publish',
+					)
+				);
+			}
+		} else {
+			$page_id = wp_insert_post(
+				array(
+					'post_type'    => 'page',
+					'post_status'  => 'publish',
+					'post_title'   => $page_data['title'],
+					'post_name'    => $page_data['slug'],
+					'post_content' => '',
+				),
+				true
+			);
+
+			if ( is_wp_error( $page_id ) ) {
+				continue;
+			}
+		}
+
+		if ( $page_id && ! empty( $page_data['template'] ) ) {
+			update_post_meta( $page_id, '_wp_page_template', $page_data['template'] );
+		}
+	}
+}
+add_action( 'after_switch_theme', 'tam_ensure_required_pages' );
+add_action( 'admin_init', 'tam_ensure_required_pages' );
+
+/**
  * Get the posts page URL.
  */
 function tam_get_posts_page_url() {
@@ -1196,10 +1252,33 @@ function tam_format_tour_price( $price ) {
 		return __( 'Liên hệ', 'travel-agency-modern' );
 	}
 
-	$numeric = preg_replace( '/[^\d]/', '', $price );
+	$numeric = preg_replace( '/[^\d.,-]/', '', $price );
+
+	if ( '' === $numeric ) {
+		return $price;
+	}
+
+	$has_dot   = false !== strpos( $numeric, '.' );
+	$has_comma = false !== strpos( $numeric, ',' );
+
+	if ( $has_dot && $has_comma ) {
+		$last_dot   = strrpos( $numeric, '.' );
+		$last_comma = strrpos( $numeric, ',' );
+
+		if ( $last_dot > $last_comma ) {
+			$numeric = str_replace( ',', '', $numeric );
+		} else {
+			$numeric = str_replace( '.', '', $numeric );
+			$numeric = str_replace( ',', '.', $numeric );
+		}
+	} elseif ( preg_match( '/^-?\d+[.,]\d{1,2}$/', $numeric ) ) {
+		$numeric = str_replace( ',', '.', $numeric );
+	} else {
+		$numeric = preg_replace( '/[^\d-]/', '', $numeric );
+	}
 
 	if ( '' !== $numeric ) {
-		return number_format_i18n( (int) $numeric ) . 'd';
+		return number_format_i18n( (int) round( (float) $numeric ) ) . 'd';
 	}
 
 	return $price;

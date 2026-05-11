@@ -1,6 +1,6 @@
 <?php
 /**
- * Template Name: Tài khoản backend
+ * Template Name: Tài khoản
  *
  * @package Travel_Agency_Modern
  */
@@ -39,45 +39,34 @@ while ( have_posts() ) :
 			<div class="tam-container">
 				<div class="tam-account-page__header">
 					<div>
-						<div class="tam-eyebrow"><?php esc_html_e( 'Backend account', 'travel-agency-modern' ); ?></div>
 						<h1 class="tam-section-title"><?php the_title(); ?></h1>
-						<p class="tam-section-subtitle">
-							<?php esc_html_e( 'Trang này lấy dữ liệu trực tiếp từ backend API của dự án travel-booking để quản lý booking, thanh toán và đánh giá.', 'travel-agency-modern' ); ?>
-						</p>
 					</div>
-					<?php if ( ! empty( $api_user ) ) : ?>
-						<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $logout_url ); ?>">
-							<?php esc_html_e( 'Đăng xuất backend', 'travel-agency-modern' ); ?>
-						</a>
-					<?php endif; ?>
 				</div>
 
 				<?php echo wp_kses_post( function_exists( 'tam_backend_api_get_account_notice_markup' ) ? tam_backend_api_get_account_notice_markup() : '' ); ?>
 
 				<?php if ( empty( $api_user ) ) : ?>
 					<div class="tam-empty-state">
-						<strong><?php esc_html_e( 'Bạn chưa đăng nhập tài khoản backend.', 'travel-agency-modern' ); ?></strong>
-						<p><?php esc_html_e( 'Đăng nhập để xem booking, theo dõi thanh toán và quản lý các đánh giá của bạn.', 'travel-agency-modern' ); ?></p>
+						<strong><?php esc_html_e( 'Bạn chưa đăng nhập tài khoản.', 'travel-agency-modern' ); ?></strong>
+						<p><?php esc_html_e( 'Đăng nhập để xem lịch sử đặt tour, thanh toán và đánh giá của bạn.', 'travel-agency-modern' ); ?></p>
 						<button class="tam-button" type="button" data-auth-open="login"><?php esc_html_e( 'Đăng nhập ngay', 'travel-agency-modern' ); ?></button>
 					</div>
 				<?php else : ?>
 					<div class="tam-account-shell">
 						<section class="tam-summary-card tam-account-hero">
 							<div>
-								<div class="tam-eyebrow"><?php esc_html_e( 'Hồ sơ backend', 'travel-agency-modern' ); ?></div>
+								<div class="tam-eyebrow"><?php esc_html_e( 'Hồ sơ', 'travel-agency-modern' ); ?></div>
 								<h2><?php echo esc_html( $api_user['name'] ); ?></h2>
-								<p><?php esc_html_e( 'Thông tin dưới đây đang được đồng bộ theo phiên đăng nhập backend hiện tại.', 'travel-agency-modern' ); ?></p>
 							</div>
 							<ul class="tam-account-hero__meta">
 								<li><strong><?php esc_html_e( 'Email', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $api_user['email'] ); ?></span></li>
 								<li><strong><?php esc_html_e( 'Số điện thoại', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( ! empty( $api_user['phone'] ) ? $api_user['phone'] : __( 'Đang cập nhật', 'travel-agency-modern' ) ); ?></span></li>
-								<li><strong><?php esc_html_e( 'Vai trò', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( ! empty( $api_user['role'] ) ? $api_user['role'] : 'USER' ); ?></span></li>
 							</ul>
 						</section>
 
 						<div class="tam-account-stats">
 							<div class="tam-summary-card tam-account-stat">
-								<span><?php esc_html_e( 'Tổng booking', 'travel-agency-modern' ); ?></span>
+								<span><?php esc_html_e( 'Tổng đặt tour', 'travel-agency-modern' ); ?></span>
 								<strong><?php echo esc_html( count( $bookings ) ); ?></strong>
 							</div>
 							<div class="tam-summary-card tam-account-stat">
@@ -99,8 +88,7 @@ while ( have_posts() ) :
 								<section class="tam-content-card tam-account-section">
 									<div class="tam-account-section__head">
 										<div>
-											<div class="tam-eyebrow"><?php esc_html_e( 'Booking API', 'travel-agency-modern' ); ?></div>
-											<h2><?php esc_html_e( 'Danh sách booking của bạn', 'travel-agency-modern' ); ?></h2>
+											<h2><?php esc_html_e( 'Lịch sử đặt tour', 'travel-agency-modern' ); ?></h2>
 										</div>
 										<a class="tam-button tam-button--ghost" href="<?php echo esc_url( tam_get_page_url_by_path( 'tour' ) ); ?>">
 											<?php esc_html_e( 'Tiếp tục xem tour', 'travel-agency-modern' ); ?>
@@ -109,8 +97,8 @@ while ( have_posts() ) :
 
 									<?php if ( empty( $bookings ) ) : ?>
 										<div class="tam-empty-state tam-empty-state--embedded">
-											<strong><?php esc_html_e( 'Bạn chưa có booking nào trên backend.', 'travel-agency-modern' ); ?></strong>
-											<p><?php esc_html_e( 'Hãy chọn một tour và đi tới checkout để backend tạo booking đầu tiên cho tài khoản của bạn.', 'travel-agency-modern' ); ?></p>
+											<strong><?php esc_html_e( 'Bạn chưa có đơn đặt tour nào.', 'travel-agency-modern' ); ?></strong>
+											<p><?php esc_html_e( 'Hãy chọn một tour và hoàn tất thanh toán để tạo đơn đặt tour đầu tiên.', 'travel-agency-modern' ); ?></p>
 										</div>
 									<?php else : ?>
 										<div class="tam-account-bookings">
@@ -145,6 +133,10 @@ while ( have_posts() ) :
 													</ul>
 
 													<div class="tam-account-booking-card__actions">
+														<a class="tam-button tam-button--ghost" href="<?php echo esc_url( $detail_url ); ?>">
+															<?php esc_html_e( 'Xem chi tiết', 'travel-agency-modern' ); ?>
+														</a>
+
 														<?php if ( $can_complete_trip ) : ?>
 															<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 																<?php wp_nonce_field( 'tam_account_complete_booking', 'tam_account_nonce' ); ?>
@@ -167,7 +159,7 @@ while ( have_posts() ) :
 																<input type="hidden" name="action" value="tam_cancel_booking" />
 																<input type="hidden" name="booking_id" value="<?php echo esc_attr( $booking['id'] ); ?>" />
 																<input type="hidden" name="redirect_to" value="<?php echo esc_url( $detail_url ); ?>" />
-																<button type="submit" class="tam-button tam-button--ghost"><?php esc_html_e( 'Huỷ booking', 'travel-agency-modern' ); ?></button>
+																<button type="submit" class="tam-button tam-button--ghost"><?php esc_html_e( 'Hủy đặt tour', 'travel-agency-modern' ); ?></button>
 															</form>
 														<?php endif; ?>
 													</div>
@@ -180,7 +172,6 @@ while ( have_posts() ) :
 								<section class="tam-content-card tam-account-section">
 									<div class="tam-account-section__head">
 										<div>
-											<div class="tam-eyebrow"><?php esc_html_e( 'Review API', 'travel-agency-modern' ); ?></div>
 											<h2><?php esc_html_e( 'Đánh giá bạn đã gửi', 'travel-agency-modern' ); ?></h2>
 										</div>
 									</div>
@@ -188,7 +179,7 @@ while ( have_posts() ) :
 									<?php if ( empty( $my_reviews ) ) : ?>
 										<div class="tam-empty-state tam-empty-state--embedded">
 											<strong><?php esc_html_e( 'Bạn chưa có đánh giá nào.', 'travel-agency-modern' ); ?></strong>
-											<p><?php esc_html_e( 'Khi có booking hoàn thành, bạn có thể quay lại trang tour để gửi review trực tiếp lên backend.', 'travel-agency-modern' ); ?></p>
+											<p><?php esc_html_e( 'Khi có chuyến đi hoàn thành, bạn có thể quay lại trang tour để gửi đánh giá.', 'travel-agency-modern' ); ?></p>
 										</div>
 									<?php else : ?>
 										<div class="tam-account-reviews">
@@ -215,15 +206,14 @@ while ( have_posts() ) :
 								<section class="tam-summary-card tam-account-section tam-account-detail">
 									<div class="tam-account-section__head">
 										<div>
-											<div class="tam-eyebrow"><?php esc_html_e( 'Booking detail API', 'travel-agency-modern' ); ?></div>
-											<h2><?php esc_html_e( 'Chi tiết booking', 'travel-agency-modern' ); ?></h2>
+											<h2><?php esc_html_e( 'Chi tiết đặt tour', 'travel-agency-modern' ); ?></h2>
 										</div>
 									</div>
 
 									<?php if ( ! $detail_item ) : ?>
 										<div class="tam-empty-state tam-empty-state--embedded">
-											<strong><?php esc_html_e( 'Chọn một booking để xem chi tiết.', 'travel-agency-modern' ); ?></strong>
-											<p><?php esc_html_e( 'Khu vực này dùng API chi tiết booking và lịch sử thanh toán của backend.', 'travel-agency-modern' ); ?></p>
+											<strong><?php esc_html_e( 'Chọn một đơn đặt tour để xem chi tiết.', 'travel-agency-modern' ); ?></strong>
+											<p><?php esc_html_e( 'Bạn có thể xem thông tin chuyến đi và lịch sử thanh toán tại đây.', 'travel-agency-modern' ); ?></p>
 										</div>
 									<?php else : ?>
 										<div class="tam-account-detail__summary">
@@ -232,7 +222,7 @@ while ( have_posts() ) :
 										</div>
 
 										<ul class="tam-account-detail__facts">
-											<li><strong><?php esc_html_e( 'Mã booking', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( function_exists( 'tam_backend_api_build_booking_ref' ) ? tam_backend_api_build_booking_ref( $detail_item['id'] ) : $detail_item['id'] ); ?></span></li>
+											<li><strong><?php esc_html_e( 'Mã đặt tour', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( function_exists( 'tam_backend_api_build_booking_ref' ) ? tam_backend_api_build_booking_ref( $detail_item['id'] ) : $detail_item['id'] ); ?></span></li>
 											<li><strong><?php esc_html_e( 'Ngày đi', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( function_exists( 'tam_backend_api_format_date' ) ? tam_backend_api_format_date( $detail_item['travel_date'] ) : $detail_item['travel_date'] ); ?></span></li>
 											<li><strong><?php esc_html_e( 'Số khách', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( $detail_item['number_of_people'] ); ?></span></li>
 											<li><strong><?php esc_html_e( 'Tổng tiền', 'travel-agency-modern' ); ?></strong><span><?php echo esc_html( tam_format_tour_price( (string) $detail_item['total_price'] ) ); ?></span></li>
@@ -253,7 +243,7 @@ while ( have_posts() ) :
 											<?php endif; ?>
 
 											<?php if ( empty( $payments ) ) : ?>
-												<p><?php esc_html_e( 'Backend chưa ghi nhận giao dịch nào cho booking này.', 'travel-agency-modern' ); ?></p>
+												<p><?php esc_html_e( 'Chưa có giao dịch nào cho đơn đặt tour này.', 'travel-agency-modern' ); ?></p>
 											<?php else : ?>
 												<ul class="tam-account-payment-list">
 													<?php foreach ( $payments as $payment ) : ?>

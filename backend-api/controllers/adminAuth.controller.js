@@ -140,19 +140,19 @@ exports.loginAdmin = async (req, res) => {
     }
 
     const admin = admins[0];
-    const passwordMatches = isBcryptHash(admin.password)
-      ? await bcrypt.compare(password, admin.password)
-      : password === admin.password;
+
+    if (!isBcryptHash(admin.password)) {
+      return res.status(401).json({
+        message: 'Tai khoan admin hoac mat khau khong chinh xac.',
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(password, admin.password);
 
     if (!passwordMatches) {
       return res.status(401).json({
         message: 'Tài khoản admin hoặc mật khẩu không chính xác.',
       });
-    }
-
-    if (!isBcryptHash(admin.password)) {
-      const upgradedPassword = await bcrypt.hash(password, 10);
-      await db.query('UPDATE admins SET password = ? WHERE id = ?', [upgradedPassword, admin.id]);
     }
 
     return res.status(200).json({

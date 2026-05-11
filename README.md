@@ -112,7 +112,7 @@ DB_USER=root
 DB_PASS=
 DB_NAME=travel_booking_api
 FRONTEND_URL=http://localhost/travel_booking
-JWT_SECRET=secret123
+JWT_SECRET=replace-with-a-strong-random-secret
 ```
 
 Nếu máy bạn dùng MySQL có mật khẩu thì đổi `DB_PASS` cho đúng.

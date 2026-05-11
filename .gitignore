@@ -27,6 +27,8 @@ wp-*.php
 !database/*.sql
 !backend-api/database/
 !backend-api/database/*.sql
+!backend-api/database/migrations/
+!backend-api/database/migrations/*.sql
 .DS_Store
 Thumbs.db
 readme.html
