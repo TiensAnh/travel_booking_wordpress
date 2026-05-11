@@ -20,27 +20,7 @@ const PAYMENT_METHODS = {
   VNPAY: {
     label: 'VNPay',
     tone: '#0f7cff',
-    note: 'Thanh toán nhanh qua cong VNPay.',
-  },
-  MOMO: {
-    label: 'MoMo',
-    tone: '#b0006d',
-    note: 'Vi dien tu pho bien cho thanh toan tren mobile.',
-  },
-  ZALOPAY: {
-    label: 'ZaloPay',
-    tone: '#0068ff',
-    note: 'Thanh toán qua he sinh thai ZaloPay.',
-  },
-  BANK_TRANSFER: {
-    label: 'Chuyen khoan ngan hang',
-    tone: '#1a7f64',
-    note: 'Xác nhận chuyển khoản với tài khoản doanh nghiệp ADN Travel.',
-  },
-  CARD: {
-    label: 'Thẻ quốc tế',
-    tone: '#6a42ff',
-    note: 'Visa, Mastercard, JCB, AmEx.',
+    note: 'Thanh toán toàn bộ qua cổng VNPay.',
   },
 };
 
@@ -845,7 +825,7 @@ async function getRetryTransactionSummary(transactionCode, userId) {
 exports.previewQuote = async (req, res) => {
   const tourId = Number(req.body.tour_id || req.body.tourId);
   const travelDate = normalizeText(req.body.travel_date || req.body.travelDate);
-  const paymentPlan = normalizePaymentPlan(req.body.payment_plan || req.body.paymentPlan);
+  const paymentPlan = PAYMENT_PLANS.FULL;
   const adultsCount = parsePositiveInteger(req.body.adults_count ?? req.body.adultsCount ?? 1);
   const childrenCount = parsePositiveInteger(req.body.children_count ?? req.body.childrenCount ?? 0);
   const couponCode = normalizeCouponCode(req.body.coupon_code || req.body.couponCode);
@@ -934,8 +914,8 @@ exports.createCheckoutSession = async (req, res) => {
   const contactEmail = normalizeEmail(req.body.contact_email || req.body.contactEmail);
   const contactCountry = normalizeText(req.body.contact_country || req.body.contactCountry || 'Vietnam');
   const specialRequests = normalizeText(req.body.special_requests || req.body.specialRequests);
-  const paymentMethod = normalizePaymentMethod(req.body.payment_method || req.body.paymentMethod);
-  const paymentPlan = normalizePaymentPlan(req.body.payment_plan || req.body.paymentPlan);
+  const paymentMethod = 'VNPAY';
+  const paymentPlan = PAYMENT_PLANS.FULL;
   const couponCode = normalizeCouponCode(req.body.coupon_code || req.body.couponCode);
   const adultsCount = parsePositiveInteger(req.body.adults_count ?? req.body.adultsCount ?? 1);
   const childrenCount = parsePositiveInteger(req.body.children_count ?? req.body.childrenCount ?? 0);
@@ -1477,14 +1457,14 @@ exports.renderMockGateway = async (req, res) => {
         <div class="stat"><span>Tour</span><strong>${summary.tour.title}</strong></div>
         <div class="stat"><span>Ngày khởi hành</span><strong>${summary.booking.travelDate}</strong></div>
         <div class="stat"><span>Hành khách</span><strong>${summary.booking.details.adultsCount} người lớn, ${summary.booking.details.childrenCount} trẻ em</strong></div>
-        <div class="stat"><span>Hình thức</span><strong>${summary.pricing.paymentPlan === PAYMENT_PLANS.DEPOSIT ? 'Đặt cọc trước' : 'Thanh toán toàn bộ'}</strong></div>
+        <div class="stat"><span>Hình thức</span><strong>Thanh toán toàn bộ</strong></div>
       </div>
 
       <div class="actions">
         <a class="action-link btn-success" href="${successCallbackUrl}">Thanh toán thành công</a>
         <a class="action-link btn-fail" href="${failedCallbackUrl}">Mô phỏng thất bại</a>
       </div>
-      <p class="note">Trong lúc tích hợp production, khu vực này sẽ được thay bằng redirect sang VNPay, MoMo, ZaloPay, chuyển khoản hoặc cổng thẻ quốc tế có credentials thật.</p>
+      <p class="note">Trong lúc tích hợp production, khu vực này sẽ được thay bằng redirect sang cổng VNPay có credentials thật.</p>
       <p class="note">Nếu trình duyệt chặn submit form, bạn vẫn có thể dùng callback thủ công: <a href="${successCallbackUrl}">Success URL</a> hoặc <a href="${failedCallbackUrl}">Failed URL</a>.</p>
     </section>
     <aside class="card">

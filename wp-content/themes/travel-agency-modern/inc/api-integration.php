@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Backend API integration helpers for the hybrid WordPress + Node setup.
  */
@@ -954,7 +954,7 @@ function tam_backend_api_handle_checkout_submission() {
 	$tour_title      = isset( $_POST['tour_title'] ) ? sanitize_text_field( wp_unslash( $_POST['tour_title'] ) ) : '';
 	$departure_date  = isset( $_POST['departure_date'] ) ? sanitize_text_field( wp_unslash( $_POST['departure_date'] ) ) : '';
 	$people          = isset( $_POST['people'] ) ? absint( wp_unslash( $_POST['people'] ) ) : 0;
-	$payment_method  = isset( $_POST['payment_method'] ) ? sanitize_key( wp_unslash( $_POST['payment_method'] ) ) : 'cod';
+	$payment_method  = 'vnpay';
 	$accepted_terms  = ! empty( $_POST['accept_terms'] );
 	$auth_token      = tam_backend_api_get_auth_token();
 	$current_user    = tam_backend_api_get_auth_user();
@@ -983,7 +983,7 @@ function tam_backend_api_handle_checkout_submission() {
 	}
 
 	if ( ! isset( $payment_methods[ $payment_method ] ) ) {
-		$payment_method = 'cod';
+		$payment_method = 'vnpay';
 	}
 
 	$booking_response = tam_backend_api_request(
@@ -1359,15 +1359,16 @@ function tam_backend_api_get_tour_card_context( $tour ) {
  * @return string
  */
 function tam_backend_api_get_tour_card_markup( $tour ) {
-	$context = tam_backend_api_get_tour_card_context( $tour );
-	$link    = $context['permalink'] ? $context['permalink'] : '#';
+	$context      = tam_backend_api_get_tour_card_context( $tour );
+	$link         = $context['permalink'] ? $context['permalink'] : '#';
+	$visual_style = ! empty( $context['visual_url'] ) ? '--tam-tour-image: url(\'' . esc_url( $context['visual_url'] ) . '\');' : '';
 
 	ob_start();
 	?>
 	<article class="tam-card tam-content-card">
-		<a class="tam-card__media" href="<?php echo esc_url( $link ); ?>">
+		<a class="tam-card__media" href="<?php echo esc_url( $link ); ?>"<?php echo $visual_style ? ' style="' . esc_attr( $visual_style ) . '"' : ''; ?>>
 			<?php if ( $context['visual_url'] ) : ?>
-				<img src="<?php echo esc_url( $context['visual_url'] ); ?>" alt="<?php echo esc_attr( $context['title'] ); ?>" loading="lazy" />
+				<img src="<?php echo esc_url( $context['visual_url'] ); ?>" alt="<?php echo esc_attr( $context['title'] ); ?>" loading="lazy" decoding="async" />
 			<?php else : ?>
 				<div class="tam-card__placeholder"><?php echo esc_html( $context['primary_term'] ); ?></div>
 			<?php endif; ?>
@@ -2511,7 +2512,7 @@ function tam_backend_api_handle_ajax_checkout_quote_request() {
 	$adults_count    = isset( $_POST['adults_count'] ) ? absint( wp_unslash( $_POST['adults_count'] ) ) : 1;
 	$children_count  = isset( $_POST['children_count'] ) ? absint( wp_unslash( $_POST['children_count'] ) ) : 0;
 	$coupon_code     = isset( $_POST['coupon_code'] ) ? sanitize_text_field( wp_unslash( $_POST['coupon_code'] ) ) : '';
-	$payment_plan    = isset( $_POST['payment_plan'] ) ? sanitize_key( wp_unslash( $_POST['payment_plan'] ) ) : 'full';
+	$payment_plan    = 'full';
 
 	if ( $api_tour_id < 1 ) {
 		wp_send_json_error(
@@ -2532,7 +2533,7 @@ function tam_backend_api_handle_ajax_checkout_quote_request() {
 				'adults_count'   => max( 1, $adults_count ),
 				'children_count' => max( 0, $children_count ),
 				'coupon_code'    => $coupon_code,
-				'payment_plan'   => strtoupper( 'deposit' === strtolower( $payment_plan ) ? 'DEPOSIT' : 'FULL' ),
+				'payment_plan'   => 'FULL',
 			),
 		)
 	);
@@ -2597,8 +2598,8 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 	$contact_email     = isset( $_POST['contact_email'] ) ? sanitize_email( wp_unslash( $_POST['contact_email'] ) ) : '';
 	$contact_country   = isset( $_POST['contact_country'] ) ? sanitize_text_field( wp_unslash( $_POST['contact_country'] ) ) : '';
 	$special_requests  = isset( $_POST['special_requests'] ) ? sanitize_textarea_field( wp_unslash( $_POST['special_requests'] ) ) : '';
-	$payment_method    = isset( $_POST['payment_method'] ) ? sanitize_key( wp_unslash( $_POST['payment_method'] ) ) : 'vnpay';
-	$payment_plan      = isset( $_POST['payment_plan'] ) ? sanitize_key( wp_unslash( $_POST['payment_plan'] ) ) : 'full';
+	$payment_method    = 'vnpay';
+	$payment_plan      = 'full';
 	$coupon_code       = isset( $_POST['coupon_code'] ) ? sanitize_text_field( wp_unslash( $_POST['coupon_code'] ) ) : '';
 	$adults_count      = isset( $_POST['adults_count'] ) ? absint( wp_unslash( $_POST['adults_count'] ) ) : 1;
 	$children_count    = isset( $_POST['children_count'] ) ? absint( wp_unslash( $_POST['children_count'] ) ) : 0;
@@ -2627,8 +2628,8 @@ function tam_backend_api_handle_ajax_checkout_session_request() {
 				'contact_email'    => $contact_email,
 				'contact_country'  => $contact_country,
 				'special_requests' => $special_requests,
-				'payment_method'   => tam_backend_api_map_payment_method( $payment_method ),
-				'payment_plan'     => strtoupper( 'deposit' === strtolower( $payment_plan ) ? 'DEPOSIT' : 'FULL' ),
+				'payment_method'   => 'VNPAY',
+				'payment_plan'     => 'FULL',
 				'coupon_code'      => $coupon_code,
 				'adults_count'     => max( 1, $adults_count ),
 				'children_count'   => max( 0, $children_count ),

@@ -10,7 +10,7 @@ while ( have_posts() ) :
 
 	tam_render_page_intro(
 		array(
-			'eyebrow'     => __( 'Cẩm nang du lịch', 'travel-agency-modern' ),
+			'eyebrow'     => __( 'Tin tức', 'travel-agency-modern' ),
 			'title'       => get_the_title(),
 			'description' => has_excerpt() ? get_the_excerpt() : __( 'Bài viết chi tiết được trình bày theo cùng visual system với phần tour để trải nghiệm đọc nhất quán hơn.', 'travel-agency-modern' ),
 			'image'       => tam_get_hero_image_url( get_the_ID() ),

@@ -76,7 +76,7 @@ while ( have_posts() ) :
 						<div class="tam-eyebrow"><?php esc_html_e( 'Booking Experience', 'travel-agency-modern' ); ?></div>
 						<h1 class="tam-section-title"><?php the_title(); ?></h1>
 						<p class="tam-section-subtitle">
-							<?php esc_html_e( 'Hoàn tất booking trong 4 bước gọn gàng: điền thông tin, xác nhận đơn, thanh toán hoặc đặt cọc và theo dõi trạng thái xác nhận từ đội ngũ vận hành.', 'travel-agency-modern' ); ?>
+							<?php esc_html_e( 'Hoàn tất booking trong 4 bước gọn gàng: điền thông tin, xác nhận đơn, thanh toán toàn bộ qua VNPay và theo dõi trạng thái xác nhận từ đội ngũ vận hành.', 'travel-agency-modern' ); ?>
 						</p>
 					</div>
 
@@ -148,7 +148,6 @@ while ( have_posts() ) :
 						data-child-price="<?php echo esc_attr( $child_price ); ?>"
 						data-tax-rate="0.08"
 						data-service-fee="39000"
-						data-deposit-rate="<?php echo esc_attr( $deposit_rate ); ?>"
 						data-can-checkout="<?php echo ! empty( $checkout['can_checkout_api'] ) ? 'true' : 'false'; ?>"
 					>
 						<div class="tam-booking-flow__progress tam-glass-card" aria-label="<?php esc_attr_e( 'Tiến trình booking', 'travel-agency-modern' ); ?>">
@@ -319,8 +318,8 @@ while ( have_posts() ) :
 									<div class="tam-booking-flow__review-grid">
 										<div class="tam-booking-flow__stack">
 											<article class="tam-booking-card tam-booking-card--tour">
-												<div class="tam-booking-card__media">
-													<img src="<?php echo esc_url( $checkout['visual'] ); ?>" alt="<?php echo esc_attr( $checkout['title'] ); ?>" />
+												<div class="tam-booking-card__media" style="<?php echo esc_attr( '--tam-tour-image: url(\'' . esc_url( $checkout['visual'] ) . '\');' ); ?>">
+													<img src="<?php echo esc_url( $checkout['visual'] ); ?>" alt="<?php echo esc_attr( $checkout['title'] ); ?>" loading="lazy" decoding="async" />
 												</div>
 												<div class="tam-booking-card__copy">
 													<div class="tam-booking-card__tags">
@@ -375,13 +374,13 @@ while ( have_posts() ) :
 											<div class="tam-eyebrow"><?php esc_html_e( 'Step 3', 'travel-agency-modern' ); ?></div>
 											<h2><?php esc_html_e( 'Thanh toán online', 'travel-agency-modern' ); ?></h2>
 										</div>
-										<p><?php esc_html_e( 'Chọn hình thức thanh toán phù hợp. Sau khi giao dịch thành công, booking sẽ chuyển sang trạng thái chờ nhân viên xác nhận trước khi gửi xác nhận chính thức.', 'travel-agency-modern' ); ?></p>
+										<p><?php esc_html_e( 'Website hiện hỗ trợ thanh toán toàn bộ qua VNPay. Sau khi giao dịch thành công, booking sẽ được ghi nhận đã thanh toán và chờ nhân viên xác nhận.', 'travel-agency-modern' ); ?></p>
 									</div>
 
 									<div class="tam-booking-card">
 										<div class="tam-booking-card__title">
 											<h3><?php esc_html_e( 'Hình thức thanh toán', 'travel-agency-modern' ); ?></h3>
-											<p><?php esc_html_e( 'Bạn có thể thanh toán toàn bộ hoặc đặt cọc trước. Cả hai lựa chọn đều giữ nguyên giao diện checkout và đưa booking vào hàng chờ xác nhận thủ công.', 'travel-agency-modern' ); ?></p>
+											<p><?php esc_html_e( 'Hệ thống chỉ nhận thanh toán 100% giá trị booking trong một lần.', 'travel-agency-modern' ); ?></p>
 										</div>
 										<div class="tam-booking-flow__payment-grid">
 											<label class="tam-booking-payment is-selected" data-payment-plan-option>
@@ -391,28 +390,9 @@ while ( have_posts() ) :
 												</span>
 												<span class="tam-booking-payment__copy">
 													<strong><?php esc_html_e( 'Thanh toán toàn bộ', 'travel-agency-modern' ); ?></strong>
-													<small><?php esc_html_e( 'Thanh toán 100% giá trị booking để đội ngũ kiểm tra và xác nhận sau khi đối soát xong giao dịch.', 'travel-agency-modern' ); ?></small>
+													<small><?php esc_html_e( 'Thanh toán 100% giá trị booking qua VNPay.', 'travel-agency-modern' ); ?></small>
 												</span>
 												<em><?php esc_html_e( 'Full', 'travel-agency-modern' ); ?></em>
-											</label>
-											<label class="tam-booking-payment" data-payment-plan-option>
-												<input type="radio" name="payment_plan" value="DEPOSIT" data-payment-plan />
-												<span class="tam-booking-payment__icon" style="--payment-tone:#0ea5e9;">
-													<i class="fa-solid fa-piggy-bank" aria-hidden="true"></i>
-												</span>
-												<span class="tam-booking-payment__copy">
-													<strong><?php esc_html_e( 'Đặt cọc trước', 'travel-agency-modern' ); ?></strong>
-													<small>
-														<?php
-														printf(
-															/* translators: %s: deposit percentage */
-															esc_html__( 'Thanh toán trước %s để giữ chỗ. Phần còn lại sẽ được nhân viên xác nhận trong bước xử lý booking.', 'travel-agency-modern' ),
-															esc_html( '30%' )
-														);
-														?>
-													</small>
-												</span>
-												<em><?php esc_html_e( 'Deposit', 'travel-agency-modern' ); ?></em>
 											</label>
 										</div>
 									</div>
@@ -447,7 +427,7 @@ while ( have_posts() ) :
 
 										<label class="tam-booking-flow__terms" data-booking-field="accept_terms">
 											<input type="checkbox" name="accept_terms" value="1" required />
-											<span><?php esc_html_e( 'Tôi đồng ý với điều khoản đặt tour, chính sách thanh toán và hiểu rằng giao dịch thành công chưa đồng nghĩa booking đã được xác nhận chính thức.', 'travel-agency-modern' ); ?></span>
+											<span><?php esc_html_e( 'Tôi đồng ý với điều khoản đặt tour, chính sách thanh toán toàn bộ qua VNPay và chính sách xác nhận booking.', 'travel-agency-modern' ); ?></span>
 										</label>
 										<p class="tam-booking-field__error" data-field-error></p>
 									</div>
@@ -531,7 +511,7 @@ while ( have_posts() ) :
 														<div><span><?php esc_html_e( 'Hành khách', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( ! empty( $summary_payload['booking']['travellers'] ) ? $summary_payload['booking']['travellers'] : 0 ); ?></strong></div>
 														<div><span><?php esc_html_e( 'Trạng thái booking', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( tam_backend_api_get_booking_status_label( $booking_status ) ); ?></strong></div>
 														<div><span><?php esc_html_e( 'Trạng thái thanh toán', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( tam_backend_api_get_payment_status_label( $payment_status ) ); ?></strong></div>
-														<div><span><?php esc_html_e( 'Hình thức', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( 'DEPOSIT' === strtoupper( (string) $payment_plan ) ? __( 'Đặt cọc trước', 'travel-agency-modern' ) : __( 'Thanh toán toàn bộ', 'travel-agency-modern' ) ); ?></strong></div>
+														<div><span><?php esc_html_e( 'Hình thức', 'travel-agency-modern' ); ?></span><strong><?php esc_html_e( 'Thanh toán toàn bộ', 'travel-agency-modern' ); ?></strong></div>
 														<div><span><?php esc_html_e( 'Đã thanh toán', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( tam_backend_api_get_summary_amount_display( $summary_payload, 'pricing.payableNowAmount' ) ); ?></strong></div>
 														<div><span><?php esc_html_e( 'Còn lại', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( tam_backend_api_get_summary_amount_display( $summary_payload, 'pricing.remainingAmount' ) ); ?></strong></div>
 														<div><span><?php esc_html_e( 'Tổng tiền', 'travel-agency-modern' ); ?></span><strong><?php echo esc_html( tam_backend_api_get_summary_amount_display( $summary_payload, 'pricing.totalAmount' ) ); ?></strong></div>
@@ -582,8 +562,8 @@ while ( have_posts() ) :
 
 							<aside class="tam-booking-flow__aside">
 								<section class="tam-booking-summary tam-glass-card" data-booking-summary-card aria-live="polite">
-									<div class="tam-booking-summary__cover">
-										<img src="<?php echo esc_url( $checkout['visual'] ); ?>" alt="<?php echo esc_attr( $checkout['title'] ); ?>" />
+									<div class="tam-booking-summary__cover" style="<?php echo esc_attr( '--tam-tour-image: url(\'' . esc_url( $checkout['visual'] ) . '\');' ); ?>">
+										<img src="<?php echo esc_url( $checkout['visual'] ); ?>" alt="<?php echo esc_attr( $checkout['title'] ); ?>" loading="lazy" decoding="async" />
 										<div class="tam-booking-summary__overlay">
 											<span><?php esc_html_e( 'Premium checkout', 'travel-agency-modern' ); ?></span>
 											<strong><?php echo esc_html( $checkout['title'] ); ?></strong>
@@ -662,7 +642,7 @@ while ( have_posts() ) :
 											<i class="fa-regular fa-hourglass-half" aria-hidden="true"></i>
 											<div>
 												<strong><?php esc_html_e( 'Giữ chỗ & nhận thanh toán', 'travel-agency-modern' ); ?></strong>
-												<p><?php esc_html_e( 'Booking được tạo trước khi chuyển cổng thanh toán. Sau callback thành công, hệ thống ghi nhận thanh toán hoặc đặt cọc ngay lập tức.', 'travel-agency-modern' ); ?></p>
+												<p><?php esc_html_e( 'Booking được tạo trước khi chuyển cổng thanh toán. Sau callback thành công, hệ thống ghi nhận thanh toán toàn bộ qua VNPay ngay lập tức.', 'travel-agency-modern' ); ?></p>
 											</div>
 										</li>
 										<li>

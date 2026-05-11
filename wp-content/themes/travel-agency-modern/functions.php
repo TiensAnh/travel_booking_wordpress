@@ -856,58 +856,22 @@ function tam_get_about_page_sections() {
 		),
 		'team'                => array(
 			array(
-				'name'        => 'Minh Anh',
+				'name'        => 'Đinh Trọng Nghĩa',
 				'role'        => 'Frontend Developer',
 				'description' => 'Phụ trách trải nghiệm người dùng, tối ưu giao diện đặt tour để mọi thao tác từ xem tour đến thanh toán đều rõ ràng, dễ dùng.',
 				'avatar'      => get_theme_file_uri( '/assets/images/team/team-minh.jpg' ),
-				'socials'     => array(
-					array(
-						'network' => 'facebook',
-						'url'     => 'https://facebook.com/',
-						'label'   => 'Facebook của Minh Anh',
-					),
-					array(
-						'network' => 'linkedin',
-						'url'     => 'https://linkedin.com/',
-						'label'   => 'LinkedIn của Minh Anh',
-					),
-				),
 			),
 			array(
-				'name'        => 'Linh Chi',
+				'name'        => 'Nguyễn Đồng Tiến Anh',
 				'role'        => 'UI/UX Designer',
 				'description' => 'Thiết kế visual system theo phong cách du lịch hiện đại, đảm bảo card tour, testimonial và checkout đều có nhịp thở thoáng và nhất quán.',
-				'avatar'      => get_theme_file_uri( '/assets/images/team/team-linh.jpg' ),
-				'socials'     => array(
-					array(
-						'network' => 'facebook',
-						'url'     => 'https://facebook.com/',
-						'label'   => 'Facebook của Linh Chi',
-					),
-					array(
-						'network' => 'linkedin',
-						'url'     => 'https://linkedin.com/',
-						'label'   => 'LinkedIn của Linh Chi',
-					),
-				),
+				'avatar'      => get_theme_file_uri( '/assets/images/team/team-hoang.jpg' ),
 			),
 			array(
-				'name'        => 'Hoàng Sơn',
+				'name'        => 'Nguyễn Văn Anh Đức',
 				'role'        => 'Backend Developer',
 				'description' => 'Xử lý dữ liệu tour, luồng đặt chỗ và các form WordPress để website không chỉ đẹp mà còn vận hành ổn định trong quá trình demo và mở rộng.',
-				'avatar'      => get_theme_file_uri( '/assets/images/team/team-hoang.jpg' ),
-				'socials'     => array(
-					array(
-						'network' => 'facebook',
-						'url'     => 'https://facebook.com/',
-						'label'   => 'Facebook của Hoàng Sơn',
-					),
-					array(
-						'network' => 'linkedin',
-						'url'     => 'https://linkedin.com/',
-						'label'   => 'LinkedIn của Hoàng Sơn',
-					),
-				),
+				'avatar'      => get_theme_file_uri( '/assets/images/team/team-minh.jpg' ),
 			),
 		),
 		'cta_title'           => 'Muốn chuyển bộ khung này thành website tour chạy nội dung thật?',
@@ -1674,63 +1638,13 @@ function tam_get_default_checkout_tour_id() {
  */
 function tam_get_checkout_payment_methods() {
 	return array(
-		'vnpay'   => array(
+		'vnpay' => array(
 			'label'       => __( 'VNPay', 'travel-agency-modern' ),
-			'description' => __( 'Thanh toán qua cổng VNPay với trải nghiệm redirect nhanh, quen thuộc và tin cậy.', 'travel-agency-modern' ),
+			'description' => __( 'Thanh toán toàn bộ qua cổng VNPay.', 'travel-agency-modern' ),
 			'icon'        => 'VNPAY',
 			'icon_class'  => 'fa-solid fa-wallet',
 			'tone'        => '#0f7cff',
-			'badge'       => __( 'Pho bien', 'travel-agency-modern' ),
-		),
-		'momo'    => array(
-			'label'       => __( 'MoMo', 'travel-agency-modern' ),
-			'description' => __( 'Phù hợp mobile-first, thanh toán trong vài thao tác và nhận thông báo nhanh.', 'travel-agency-modern' ),
-			'icon'        => 'MOMO',
-			'icon_class'  => 'fa-solid fa-mobile-screen-button',
-			'tone'        => '#b0006d',
-			'badge'       => __( 'Mobile', 'travel-agency-modern' ),
-		),
-		'zalopay' => array(
-			'label'       => __( 'ZaloPay', 'travel-agency-modern' ),
-			'description' => __( 'Toi uu cho khach hang tre, thanh toan nhanh va quen thuoc trong he sinh thai Zalo.', 'travel-agency-modern' ),
-			'icon'        => 'ZALO',
-			'icon_class'  => 'fa-solid fa-bolt',
-			'tone'        => '#0068ff',
-			'badge'       => __( 'Nhanh', 'travel-agency-modern' ),
-		),
-		'bank'    => array(
-			'label'       => __( 'Chuyen khoan ngan hang', 'travel-agency-modern' ),
-			'description' => __( 'Phù hợp với booking giá trị lớn, hiển thị thông tin tài khoản để đối soát dễ dàng.', 'travel-agency-modern' ),
-			'icon'        => 'BANK',
-			'icon_class'  => 'fa-solid fa-building-columns',
-			'tone'        => '#1a7f64',
-			'badge'       => __( 'Doanh nghiep', 'travel-agency-modern' ),
-		),
-		'card'    => array(
-			'label'       => __( 'Thẻ quốc tế', 'travel-agency-modern' ),
-			'description' => __( 'Visa, Mastercard, JCB va cac loai the quoc te khac cho khach nuoc ngoai.', 'travel-agency-modern' ),
-			'icon'        => 'CARD',
-			'icon_class'  => 'fa-regular fa-credit-card',
-			'tone'        => '#6a42ff',
-			'badge'       => __( 'Visa / MC', 'travel-agency-modern' ),
-		),
-	);
-
-	return array(
-		'cod'    => array(
-			'label'       => __( 'Thanh toán khi đến (COD)', 'travel-agency-modern' ),
-			'description' => __( 'Giữ chỗ trước, thanh toán khi gặp nhân viên xác nhận hoặc tại điểm hẹn.', 'travel-agency-modern' ),
-			'icon'        => 'COD',
-		),
-		'bank'   => array(
-			'label'       => __( 'Chuyển khoản ngân hàng', 'travel-agency-modern' ),
-			'description' => __( 'Giả lập chuyển khoản để đội ngũ gọi lại xác nhận và gửi hướng dẫn chi tiết.', 'travel-agency-modern' ),
-			'icon'        => 'BANK',
-		),
-		'wallet' => array(
-			'label'       => __( 'Ví điện tử', 'travel-agency-modern' ),
-			'description' => __( 'MoMo, ZaloPay hoặc VNPay. Giao diện hiển thị như một lựa chọn nhanh.', 'travel-agency-modern' ),
-			'icon'        => 'WALLET',
+			'badge'       => __( 'VNPay', 'travel-agency-modern' ),
 		),
 	);
 }
@@ -2706,7 +2620,7 @@ function tam_handle_checkout_form() {
 	$tour_title     = isset( $_POST['tour_title'] ) ? sanitize_text_field( wp_unslash( $_POST['tour_title'] ) ) : '';
 	$departure_date = isset( $_POST['departure_date'] ) ? sanitize_text_field( wp_unslash( $_POST['departure_date'] ) ) : '';
 	$people         = isset( $_POST['people'] ) ? absint( wp_unslash( $_POST['people'] ) ) : 0;
-	$payment_method = isset( $_POST['payment_method'] ) ? sanitize_key( wp_unslash( $_POST['payment_method'] ) ) : 'cod';
+	$payment_method = 'vnpay';
 	$accepted_terms = ! empty( $_POST['accept_terms'] );
 	$payment_methods = tam_get_checkout_payment_methods();
 
@@ -2723,7 +2637,7 @@ function tam_handle_checkout_form() {
 	}
 
 	if ( ! isset( $payment_methods[ $payment_method ] ) ) {
-		$payment_method = 'cod';
+		$payment_method = 'vnpay';
 	}
 
 	$actual_price = 0;
@@ -3064,4 +2978,21 @@ function tam_handle_tour_filter_request() {
 }
 add_action( 'wp_ajax_nopriv_tam_filter_tours', 'tam_handle_tour_filter_request' );
 add_action( 'wp_ajax_tam_filter_tours', 'tam_handle_tour_filter_request' );
+/**
+ * Rename the old travel guide label to news on the public interface.
+ */
+function tam_rename_travel_guide_label_to_news( $title ) {
+	if ( is_admin() || ! is_string( $title ) ) {
+		return $title;
+	}
 
+	$plain_title = trim( wp_strip_all_tags( $title ) );
+
+	if ( 'Cẩm nang du lịch' === $plain_title || 'Cẩm nang' === $plain_title ) {
+		return __( 'Tin tức', 'travel-agency-modern' );
+	}
+
+	return $title;
+}
+add_filter( 'the_title', 'tam_rename_travel_guide_label_to_news', 10, 1 );
+add_filter( 'nav_menu_item_title', 'tam_rename_travel_guide_label_to_news', 10, 1 );

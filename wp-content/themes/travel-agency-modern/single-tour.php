@@ -90,10 +90,11 @@ while ( have_posts() ) :
 							</div>
 
 							<div class="tam-tour-detail__gallery-main">
-								<div class="tam-tour-detail__gallery-frame">
+								<div class="tam-tour-detail__gallery-frame" style="<?php echo esc_attr( '--tam-tour-image: url(\'' . esc_url( $main_visual['url'] ) . '\');' ); ?>">
 									<img
 										src="<?php echo esc_url( $main_visual['url'] ); ?>"
 										alt="<?php echo esc_attr( $main_visual['alt'] ); ?>"
+										decoding="async"
 										data-tour-gallery-main
 									/>
 								</div>
@@ -102,8 +103,8 @@ while ( have_posts() ) :
 							<?php if ( count( $gallery_images ) > 1 ) : ?>
 								<div class="tam-tour-detail__thumbs" aria-label="Tour gallery">
 									<?php foreach ( $gallery_images as $index => $image ) : ?>
-										<button class="tam-tour-detail__thumb <?php echo 0 === $index ? 'is-active' : ''; ?>" type="button" data-tour-gallery-thumb data-image-url="<?php echo esc_url( $image['url'] ); ?>" data-image-alt="<?php echo esc_attr( $image['alt'] ); ?>">
-											<img src="<?php echo esc_url( $image['url'] ); ?>" alt="<?php echo esc_attr( $image['alt'] ); ?>" />
+										<button class="tam-tour-detail__thumb <?php echo 0 === $index ? 'is-active' : ''; ?>" type="button" data-tour-gallery-thumb data-image-url="<?php echo esc_url( $image['url'] ); ?>" data-image-alt="<?php echo esc_attr( $image['alt'] ); ?>" style="<?php echo esc_attr( '--tam-tour-image: url(\'' . esc_url( $image['url'] ) . '\');' ); ?>">
+											<img src="<?php echo esc_url( $image['url'] ); ?>" alt="<?php echo esc_attr( $image['alt'] ); ?>" loading="lazy" decoding="async" />
 										</button>
 									<?php endforeach; ?>
 								</div>

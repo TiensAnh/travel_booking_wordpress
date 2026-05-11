@@ -8293,3 +8293,69 @@ body.travel-agency-modern .tam-tour-detail__date-option {
     font-size: 1.25rem;
   }
 }
+
+/* Tour image quality guard */
+body.travel-agency-modern .tam-card__media,
+body.travel-agency-modern .tam-tour-detail__gallery-frame,
+body.travel-agency-modern .tam-tour-detail__thumb,
+body.travel-agency-modern .tam-booking-card__media,
+body.travel-agency-modern .tam-booking-summary__cover {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+  background: #eef5fb;
+}
+
+body.travel-agency-modern .tam-card__media::before,
+body.travel-agency-modern .tam-tour-detail__gallery-frame::before,
+body.travel-agency-modern .tam-tour-detail__thumb::before,
+body.travel-agency-modern .tam-booking-card__media::before,
+body.travel-agency-modern .tam-booking-summary__cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--tam-tour-image);
+  background-position: center;
+  background-size: cover;
+  filter: blur(18px);
+  opacity: 0.34;
+  transform: scale(1.08);
+  pointer-events: none;
+}
+
+body.travel-agency-modern .tam-tour-detail__thumb::before {
+  filter: blur(10px);
+  opacity: 0.24;
+}
+
+body.travel-agency-modern .tam-card__media img,
+body.travel-agency-modern .tam-tour-detail__gallery-frame img,
+body.travel-agency-modern .tam-tour-detail__thumb img,
+body.travel-agency-modern .tam-booking-card__media img,
+body.travel-agency-modern .tam-booking-summary__cover img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  transform: none;
+  image-rendering: auto;
+}
+
+body.travel-agency-modern .tam-card:hover .tam-card__media img,
+body.travel-agency-modern .tam-card:focus-within .tam-card__media img {
+  transform: none;
+}
+
+body.travel-agency-modern .tam-booking-card__media::after,
+body.travel-agency-modern .tam-booking-summary__overlay,
+body.travel-agency-modern .tam-card__placeholder {
+  z-index: 2;
+}

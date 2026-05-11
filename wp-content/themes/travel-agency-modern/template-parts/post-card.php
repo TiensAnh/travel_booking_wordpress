@@ -8,7 +8,7 @@
 		<?php if ( has_post_thumbnail() ) : ?>
 			<?php the_post_thumbnail( 'tam-blog-card' ); ?>
 		<?php else : ?>
-			<div class="tam-card__placeholder"><?php esc_html_e( 'Cẩm nang', 'travel-agency-modern' ); ?></div>
+			<div class="tam-card__placeholder"><?php esc_html_e( 'Tin tức', 'travel-agency-modern' ); ?></div>
 		<?php endif; ?>
 	</a>
 	<div class="tam-card__body">

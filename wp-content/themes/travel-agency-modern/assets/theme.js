@@ -510,6 +510,12 @@ document.addEventListener("DOMContentLoaded", function () {
         galleryMain.setAttribute("src", nextUrl);
         galleryMain.setAttribute("alt", nextAlt);
 
+        const galleryFrame = galleryMain.closest(".tam-tour-detail__gallery-frame");
+
+        if (galleryFrame) {
+          galleryFrame.style.setProperty("--tam-tour-image", "url(\"" + nextUrl.replace(/"/g, "\\\"") + "\")");
+        }
+
         galleryThumbs.forEach(function (item) {
           item.classList.remove("is-active");
         });
@@ -956,11 +962,11 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     const normalizePaymentPlan = function (value) {
-      return String(value || "").toUpperCase() === "DEPOSIT" ? "DEPOSIT" : "FULL";
+      return "FULL";
     };
 
     const getPaymentPlanLabel = function (value) {
-      return normalizePaymentPlan(value) === "DEPOSIT" ? "Đặt cọc trước" : "Thanh toán toàn bộ";
+      return "Thanh toán toàn bộ";
     };
 
     const resetCheckoutSessionAttempt = function () {

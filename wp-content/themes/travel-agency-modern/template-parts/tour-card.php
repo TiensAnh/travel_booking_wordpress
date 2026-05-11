@@ -8,11 +8,12 @@ $destinations  = tam_get_tour_destinations( get_the_ID() );
 $primary_term  = ! empty( $destinations ) ? $destinations[0]->name : __( 'Tour du lịch', 'travel-agency-modern' );
 $price_display = tam_format_tour_price( $tour_meta['price_from'] );
 $visual_url    = tam_get_tour_image_url( get_the_ID(), 'tam-tour-card' );
+$visual_style  = $visual_url ? '--tam-tour-image: url(\'' . esc_url( $visual_url ) . '\');' : '';
 ?>
 <article <?php post_class( 'tam-card tam-content-card' ); ?>>
-	<a class="tam-card__media" href="<?php the_permalink(); ?>">
+	<a class="tam-card__media" href="<?php the_permalink(); ?>"<?php echo $visual_style ? ' style="' . esc_attr( $visual_style ) . '"' : ''; ?>>
 		<?php if ( $visual_url ) : ?>
-			<img src="<?php echo esc_url( $visual_url ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" loading="lazy" />
+			<img src="<?php echo esc_url( $visual_url ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" loading="lazy" decoding="async" />
 		<?php else : ?>
 			<div class="tam-card__placeholder"><?php echo esc_html( $primary_term ); ?></div>
 		<?php endif; ?>

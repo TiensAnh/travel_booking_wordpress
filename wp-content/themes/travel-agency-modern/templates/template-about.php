@@ -103,8 +103,8 @@ while ( have_posts() ) :
 				<div class="tam-section-head">
 					<div>
 						<div class="tam-eyebrow"><?php esc_html_e( 'Đội ngũ', 'travel-agency-modern' ); ?></div>
-						<h2 class="tam-section-title"><?php esc_html_e( 'Đội ngũ của chúng tôi', 'travel-agency-modern' ); ?></h2>
-						<p class="tam-section-subtitle"><?php esc_html_e( 'Ba thành viên giữ cho DNA Travel vừa có giao diện chỉn chu, vừa có luồng đặt tour mượt và dễ mở rộng về sau.', 'travel-agency-modern' ); ?></p>
+						<h2 class="tam-section-title"><?php esc_html_e( 'Đinh Trọng Nghĩa, Nguyễn Đồng Tiến Anh, Nguyễn Văn Anh Đức', 'travel-agency-modern' ); ?></h2>
+						<p class="tam-section-subtitle"><?php esc_html_e( 'Ba thành viên phụ trách xây dựng giao diện, luồng đặt tour và phần backend để website vận hành ổn định trong quá trình demo.', 'travel-agency-modern' ); ?></p>
 					</div>
 				</div>
 				<div class="tam-team-grid">
@@ -122,23 +122,6 @@ while ( have_posts() ) :
 								<p class="tam-team-card__role"><?php echo esc_html( $member['role'] ); ?></p>
 								<p class="tam-team-card__description"><?php echo esc_html( $member['description'] ); ?></p>
 							</div>
-							<?php if ( ! empty( $member['socials'] ) ) : ?>
-								<div class="tam-team-card__socials">
-									<?php foreach ( $member['socials'] as $social ) : ?>
-										<a class="tam-team-card__social-link" href="<?php echo esc_url( $social['url'] ); ?>" target="_blank" rel="noopener noreferrer" aria-label="<?php echo esc_attr( $social['label'] ); ?>">
-											<?php if ( 'facebook' === $social['network'] ) : ?>
-												<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-													<path d="M13.5 21v-7.2h2.4l.36-2.8H13.5V9.21c0-.81.23-1.36 1.39-1.36h1.48V5.34c-.26-.03-1.13-.1-2.14-.1-2.12 0-3.58 1.3-3.58 3.68V11H8.25v2.8h2.45V21h2.8Z"/>
-												</svg>
-											<?php elseif ( 'linkedin' === $social['network'] ) : ?>
-												<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-													<path d="M6.94 8.5A1.69 1.69 0 1 0 6.93 5.1a1.69 1.69 0 0 0 .01 3.38ZM5.5 9.75h2.87V19.5H5.5V9.75Zm4.67 0h2.75v1.33h.04c.38-.72 1.32-1.49 2.72-1.49 2.91 0 3.45 1.92 3.45 4.41v5.5h-2.87v-4.87c0-1.16-.02-2.66-1.62-2.66-1.62 0-1.87 1.27-1.87 2.58v4.95h-2.87V9.75Z"/>
-												</svg>
-											<?php endif; ?>
-										</a>
-									<?php endforeach; ?>
-								</div>
-							<?php endif; ?>
 						</article>
 					<?php endforeach; ?>
 				</div>
