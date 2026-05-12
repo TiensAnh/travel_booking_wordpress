@@ -213,15 +213,15 @@ Sau khi đăng nhập `wp-admin`, kiểm tra các bước sau:
 
 ### Giao diện trang chủ / tour
 
-![Trang chủ](./wp-content/uploads/2026/05/Trang%20chu%20cua%20user.jpg)
+![Trang chủ](./docs/images/home-page.jpg)
 
 ### Giao diện chi tiết tour
 
-![Chi tiết tour](./wp-content/uploads/2026/05/trang%20chi%20tiet%20tour.jpg)
+![Chi tiết tour](./docs/images/tour-detail.jpg)
 
 ### Giao diện dashboard quản trị
 
-![Dashboard quản trị](./wp-content/uploads/2026/05/trang%20dashboard.jpg)
+![Dashboard quản trị](./docs/images/dashboard.jpg)
 
 ## Link video demo
 
